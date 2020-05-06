@@ -17,14 +17,6 @@ all_countries <- c("Angola","Bangladesh","Brazil","Botswana","Cambodia","Cameroo
                    "Russian Federation","Sierra Leone","South Africa","Thailand",
                    "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
 
-## what is the correlation like between year and inciddence?
-inc_year_cor <- function(country_name){
-  one_country <- master %>% filter(country == country_name) %>% select(year, e_inc_100k) 
-  res <- cor(one_country$year, one_country$e_inc_100k)
-  res
-}
-
-inc_year_cor("Nigeria")
 
 ## get_r2 calculates the r2 for a linear regression of inc vs year
 ## it outputs a one row tibble with columns country name and r2
@@ -70,49 +62,9 @@ plot_trend <- function(country_name){
   g 
 }
 
+## generate plots for everything in 
+all_plots <- lapply(all_countries, plot_trend)
 
-grid.arrange(trAngola)
+do.call(grid.arrange, all_plots)
 
 
-trAngola<- plot_trend("Angola")
-trBangladesh<- plot_trend("Bangladesh")
-trBrazil<- plot_trend("Brazil")
-trBotswana<- plot_trend("Botswana")
-trCambodia<- plot_trend("Cambodia")
-trCameroon<- plot_trend("Cameroon")
-trCentralAfricanRepublic<- plot_trend("Central African Republic")
-trChad<- plot_trend("Chad")
-trChina<- plot_trend("China")
-trCongo<- plot_trend("Congo")
-trDemocraticPeoplesRepublicofKorea<- plot_trend("Democratic People's Republic of Korea")
-trDemocraticRepublicoftheCongo<- plot_trend("Democratic Republic of the Congo")
-trEswatini<- plot_trend("Eswatini")
-trEthiopia<- plot_trend("Ethiopia")
-trGhana<- plot_trend("Ghana")
-trGuineaBissau<- plot_trend("Guinea-Bissau")
-trIndia<- plot_trend("India")
-trIndonesia<- plot_trend("Indonesia")
-trKenya<- plot_trend("Kenya")
-trLaos<- plot_trend("Laos")
-trLesotho<- plot_trend("Lesotho")
-trLiberia<- plot_trend("Liberia")
-trMalawi<- plot_trend("Malawi")
-trMozambique<- plot_trend("Mozambique")
-trMyanmar<- plot_trend("Myanmar")
-trNamibia<- plot_trend("Namibia")
-trNigeria<- plot_trend("Nigeria")
-trPakistan<- plot_trend("Pakistan")
-trPapuaNewGuinea<- plot_trend("Papua New Guinea")
-trPhilippines<- plot_trend("Philippines")
-trRepublicofKorea<- plot_trend("Republic of Korea")
-trRussianFederation<- plot_trend("Russian Federation")
-trSierraLeone<- plot_trend("Sierra Leone")
-trSouthAfrica<- plot_trend("South Africa")
-trThailand<- plot_trend("Thailand")
-trUganda<- plot_trend("Uganda")
-trUnitedRepublicofTanzania<- plot_trend("United Republic of Tanzania")
-trVietnam<- plot_trend("Vietnam")
-trZambia<- plot_trend("Zambia")
-trZimbabwe<- plot_trend("Zimbabwe")
-
-grid.arrange(trAngola, trBangladesh, trBrazil, trBotswana, trCambodia, trCameroon, trCentralAfricanRepublic, trChad, trChina, trCongo, trDemocraticPeoplesRepublicofKorea, trDemocraticRepublicoftheCongo, trEswatini, trEthiopia, trGhana, trGuineaBissau, trIndia, trIndonesia, trKenya, trLaos, trLesotho, trLiberia, trMalawi, trMozambique, trMyanmar, trNamibia, trNigeria, trPakistan, trPapuaNewGuinea, trPhilippines, trRepublicofKorea, trRussianFederation, trSierraLeone, trSouthAfrica, trThailand, trUganda, trUnitedRepublicofTanzania, trVietnam, trZambia, trZimbabwe)
