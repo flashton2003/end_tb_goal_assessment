@@ -1,5 +1,6 @@
 library(tidyverse)
 #library(ggplot2)
+library(knitr)
 library(tibble)
 library(ggpmisc)
 library(gridExtra)
@@ -40,12 +41,8 @@ get_r2 <- function(country_name){
   return(o)
 }
 
-get_r2("Angola")
+#get_r2("Angola")
 
-## here, we run get_r2 on everything in all_countries
-## this outputs a list of tibbles, which we then merge with
-## bind_rows
-r2_res <- bind_rows(lapply(all_countries, get_r2))
 
 
 plot_trend <- function(country_name){
@@ -61,6 +58,18 @@ plot_trend <- function(country_name){
   ylab("Incidence per 100,000 people")
   g 
 }
+
+
+
+
+## here, we run get_r2 on everything in all_countries
+## this outputs a list of tibbles, which we then merge with
+## bind_rows
+r2_res <- bind_rows(lapply(all_countries, get_r2))
+## kable from knitr library
+kable(r2_res)
+write_tsv(r2_res, '2020.05.06.40_countries_r2.tsv')
+
 
 ## generate plots for everything in 
 all_plots <- lapply(all_countries, plot_trend)
