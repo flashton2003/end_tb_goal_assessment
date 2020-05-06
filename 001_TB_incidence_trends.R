@@ -29,12 +29,26 @@ inc_year_cor("Nigeria")
 ## get_r2 calculates the r2 for a linear regression of inc vs year
 ## it outputs a one row tibble with columns country name and r2
 get_r2 <- function(country_name){
+ 
   one_country <- master %>% filter(country == country_name) %>% select(year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
   linear_model <- lm(e_inc_100k ~ year, data = one_country)
-  slm <- summary(linear_model)
-  o <- tibble(country_name = country_name, r2 = slm$r.squared)
+  ## this tryCatch function will run summary on the linear model
+  ## and if summary returns a warning about the essentially perfect fit so summary
+  ## unreliable, then r_sq is NaN
+  r_sq <- tryCatch(
+    {
+      r_sq <- summary(linear_model)$r.squared
+    },
+    warning = function(w){
+      return(NaN)
+    }
+    )
+    
+  o <- tibble(country_name = country_name, r2 = r_sq)
   return(o)
 }
+
+get_r2("Angola")
 
 ## here, we run get_r2 on everything in all_countries
 ## this outputs a list of tibbles, which we then merge with
@@ -58,7 +72,7 @@ plot_trend <- function(country_name){
 
 
 grid.arrange(trAngola)
-#inc_year_cor("Angola")
+
 
 trAngola<- plot_trend("Angola")
 trBangladesh<- plot_trend("Bangladesh")
