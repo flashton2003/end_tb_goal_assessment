@@ -26,20 +26,21 @@ inc_year_cor <- function(country_name){
 
 inc_year_cor("Nigeria")
 
-get_r2 <- function(country_name, output){
+## get_r2 calculates the r2 for a linear regression of inc vs year
+## it outputs a one row tibble with columns country name and r2
+get_r2 <- function(country_name){
   one_country <- master %>% filter(country == country_name) %>% select(year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
   linear_model <- lm(e_inc_100k ~ year, data = one_country)
-  #print(linear_model)
   slm <- summary(linear_model)
-  #slm
-  output <-add_row(output, country_name = country_name, r2 = slm$r.squared)
-  return(output)
+  o <- tibble(country_name = country_name, r2 = slm$r.squared)
+  return(o)
 }
 
-r2_res <- tibble(country_name = character(), r2 = numeric())
+## here, we run get_r2 on everything in all_countries
+## this outputs a list of tibbles, which we then merge with
+## bind_rows
+r2_res <- bind_rows(lapply(all_countries, get_r2))
 
-r2_res <- get_r2("Myanmar", r2_res)
-r2_res
 
 plot_trend <- function(country_name){
   one_country <- master %>% filter(country == country_name) %>% select(year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi) 
