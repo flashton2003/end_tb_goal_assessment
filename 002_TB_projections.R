@@ -70,7 +70,26 @@ get_one_country_df <- function(df_country){
   return(one_country)
 }
 
-
+add_ci_to_predicted <- function(predicted_tb_inc, df_country){
+  ## add new columns with the ratio of the estimate to the high and low bounds
+  df_country <- df_country %>% mutate(lb_ratio = e_inc_100k_lo / e_inc_100k) %>% mutate(hb_ratio = e_inc_100k_hi / e_inc_100k)
+  ## take averge of the last 5 years  
+  low_bound_ratio <- mean(tail(df_country$lb_ratio, 5))
+  high_bound_ratio <- mean(tail(df_country$hb_ratio, 5))
+  
+  ## only want values for the period for which we rely on projections i.e. > 2018
+  ## so, filter, add the projected CIs
+  tmp_predicted_tb_inc <- predicted_tb_inc %>% filter(year > 2018)
+  tmp_predicted_tb_inc <- tmp_predicted_tb_inc %>% mutate(proj_ci_lo = predict_value * low_bound_ratio) %>% mutate(proj_ci_hi = predict_value * high_bound_ratio)
+  
+  ## and then combien back 
+  predicted_tb_inc <- left_join(predicted_tb_inc, tmp_predicted_tb_inc)
+  
+  print(tail(tmp_predicted_tb_inc))
+  return(predicted_tb_inc)
+}
+ 
+ 
 model_main <- function(country_name){
   ## need to get the year from the name, as mapply not working
   ## not ideal to have this specified within the function
@@ -92,7 +111,14 @@ model_main <- function(country_name){
   ## do we need both of these, or can we only do this once?
   predicted_tb_inc <- predict_tb_inc(year_start, fit)
  
- 
+  ## add a new function which adds teh error bars on prediction
+  ## it needs to take in 1) predicted_tb_inc 2) tb_inc and confidence intervals
+  ## for the last 5 years, get the ratio of the estimate to hte high and hte low CI, take teh average of this over 5 years
+  ## then, make new columns, predicting the bounds based on the average.
+  
+  predicted_tb_inc <- add_ci_to_predicted(predicted_tb_inc, df_country)
+  
+  
   ## get df for one country
   one_country <- get_one_country_df(df_country)
   
@@ -150,19 +176,22 @@ model_main <- function(country_name){
   
   # graph modified linear model, include the dataframe showing
   # extra number of cases in the graph
-  
+  print(tail(predicted_tb_inc))
   trend <- ggplot() + geom_point(data = df_country, aes(x = year, y = e_inc_100k)) +
     geom_point(data = df_target, aes(x = year, y = num), colour = "#7CAE00") +
     geom_line(aes(x = year, y = predict_value), data = predicted_tb_inc, color = "#F8766D") +
     geom_ribbon(data = df_country, aes(x = year, ymin=e_inc_100k_lo, ymax = e_inc_100k_hi), alpha = 0.3) +
+    geom_ribbon(data = predicted_tb_inc, aes(x = year, ymin=proj_ci_lo, ymax = proj_ci_hi, fill = "#F8766D"), alpha = 0.3) +
     xlab("Year") + ylab("Incidence of TB \n (per 100,000)") + 
     ggtitle(country_name) + 
-    annotation_custom(tableGrob(extra_cases, rows = NULL), xmin = 2025, ymin = (max_inc_100k - (0.3*range_inc)))
+    annotation_custom(tableGrob(extra_cases, rows = NULL), xmin = 2025, ymin = (max_inc_100k - (0.3*range_inc))) + 
+    theme(legend.position = "none") 
   
   trend
   
 }
 
+model_main('Angola')
 
 
 
@@ -191,4 +220,3 @@ stopifnot(length(unique(master$country)) == 40)
 all_countries_projection <- lapply(all_countries, model_main)
 do.call(grid.arrange, all_countries_projection)
 
-model_main('Angola')
