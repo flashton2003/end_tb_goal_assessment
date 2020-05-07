@@ -62,6 +62,15 @@ calc_target <- function(df_country, one_country){
   return(o)
 }
 
+get_one_country_df <- function(df_country){
+  to_2035 <- data.frame(year=2019:2035, e_inc_100k= replicate(17, "NA"))
+  # need to do this as doesn't like the rbind with e_inc_100k_lo, e_inc_100k_hi
+  tmp_df_country <- df_country %>% select(year, e_inc_100k)
+  one_country <- rbind(tmp_df_country, to_2035)
+  return(one_country)
+}
+
+
 model_main <- function(country_name){
   ## need to get the year from the name, as mapply not working
   ## not ideal to have this specified within the function
@@ -84,12 +93,10 @@ model_main <- function(country_name){
   predicted_tb_inc <- predict_tb_inc(year_start, fit)
  
  
-  to_2035 <- data.frame(year=2019:2035, e_inc_100k= replicate(17, "NA"))
-  # need to do this as doesn't like the rbind with e_inc_100k_lo, e_inc_100k_hi
-  tmp_df_country <- df_country %>% select(year, e_inc_100k)
-  one_country <- rbind(tmp_df_country, to_2035)
+  ## get df for one country
+  one_country <- get_one_country_df(df_country)
   
-  
+  ## calculate the targets
   target_output  <- calc_target(df_country, one_country)
   df_target <- target_output$df_target
   fit.target <- target_output$fit.target
