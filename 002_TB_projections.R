@@ -37,38 +37,18 @@ read_in_pop <- function(pop_handle){
   return(pop)
 }
 
-model <- function(country_name, pop){
-  ## need to get the year from the name, as mapply not working
-  years <- c(2011, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2010, 2000, 2012, 2015, 2000, 2000, 2005, 2000, 2000, 2010, 2000, 2007, 2013, 2015, 2012, 2009, 2011, 2000, 2012, 2000, 2016, 2011, 2009, 2009, 2016, 2000, 2012, 2006, 2000, 2000, 2000)
-  names(years) <- c("Angola", "Bangladesh", "Botswana", "Brazil", "Cambodia", "Cameroon", "Central African Republic", "Chad", "China", "Congo", "Democratic People's Republic of Korea", "Democratic Republic of the Congo", "Eswatini", "Ethiopia", "Ghana", "Guinea-Bissau", "India", "Indonesia", "Kenya", "Laos", "Lesotho", "Liberia", "Malawi", "Mozambique", "Myanmar", "Namibia", "Nigeria", "Pakistan", "Papua New Guinea", "Philippines", "Republic of Korea", "Russian Federation", "Sierra Leone", "South Africa", "Thailand", "Uganda", "United Republic of Tanzania", "Vietnam", "Zambia", "Zimbabwe")
-  # select country, year, TB incidence, population
-  df_country <- master %>% filter(country == country_name) %>% 
-    select(year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
-  year_start <- years[country_name]
-  # row begins at year_start
-  row <- as.numeric(rownames(df_country[df_country$year == year_start,]))
-  
-  # fit model from year_start to 2017
-  fit <- lm(e_inc_100k ~ year, data = df_country[row:nrow(df_country),])
-  
+predict_tb_inc <- function(year_start, fit){
   # insert predicted values to df
-  regression <- data.frame(year = seq(year_start, 2035, 0.01), predict_value = 0)
-  regression$predict_value <- as.numeric(predict(fit, regression, type = "response"))
+  predicted_tb_inc <- data.frame(year = seq(year_start, 2035, 0.01), predict_value = 0)
+  predicted_tb_inc$predict_value <- as.numeric(predict(fit, predicted_tb_inc, type = "response"))
   
   # set 10 as minimum for TB incidence
   # replace all predicted values less than 10 with 10
-  regression[] <- lapply(regression, function(x) ifelse(x<10, 10, x))
-  
-  # need to do this as doesn't like the rbind with e_inc_100k_lo, e_inc_100k_hi
-  to_2035 <- data.frame(year=2019:2035, e_inc_100k= replicate(17, "NA"))
-  tmp_df_country <- df_country %>% select(year, e_inc_100k)
-  one_country <- rbind(tmp_df_country, to_2035)
-  
-  # add predicted incidence based on linear regression model, through year 2035
-  pred1 <- one_country %>% 
-    mutate(pred_num_100k = predict(fit, newdata = one_country, type = "response"))
-  pred1[] <- lapply(pred1, function(x) ifelse(x<10, 10, x))
-  
+  predicted_tb_inc[] <- lapply(predicted_tb_inc, function(x) ifelse(x<10, 10, x))
+  return(predicted_tb_inc)
+}
+
+calc_target <- function(df_country, one_country){
   # model the target decline with End TB goal with benchmarks to 2035
   num_2015 <- as.integer(df_country$e_inc_100k[one_country$year == 2015])
   
@@ -78,8 +58,48 @@ model <- function(country_name, pop){
   
   # nonlinear, polynomial regression for target decline
   fit.target <- lm(num ~ poly(year, 5, raw = TRUE), data = df_target)
+  o <- list(df_target = df_target, fit.target = fit.target)
+  return(o)
+}
+
+model_main <- function(country_name){
+  ## need to get the year from the name, as mapply not working
+  ## not ideal to have this specified within the function
+  years <- c(2011, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2010, 2000, 2012, 2015, 2000, 2000, 2005, 2000, 2000, 2010, 2000, 2007, 2013, 2015, 2012, 2009, 2011, 2000, 2012, 2000, 2016, 2011, 2009, 2009, 2016, 2000, 2012, 2006, 2000, 2000, 2000)
+  names(years) <- c("Angola", "Bangladesh", "Botswana", "Brazil", "Cambodia", "Cameroon", "Central African Republic", "Chad", "China", "Congo", "Democratic People's Republic of Korea", "Democratic Republic of the Congo", "Eswatini", "Ethiopia", "Ghana", "Guinea-Bissau", "India", "Indonesia", "Kenya", "Laos", "Lesotho", "Liberia", "Malawi", "Mozambique", "Myanmar", "Namibia", "Nigeria", "Pakistan", "Papua New Guinea", "Philippines", "Republic of Korea", "Russian Federation", "Sierra Leone", "South Africa", "Thailand", "Uganda", "United Republic of Tanzania", "Vietnam", "Zambia", "Zimbabwe")
+  # select country, year, TB incidence, population
+  df_country <- master %>% filter(country == country_name) %>% 
+    select(year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
+  year_start <- years[country_name]
   
-  new.df <- data.frame(year = pred1$year)
+  # row begins at year_start
+  row <- as.numeric(rownames(df_country[df_country$year == year_start,]))
+  
+  # fit model from year_start to 2017
+  fit <- lm(e_inc_100k ~ year, data = df_country[row:nrow(df_country),])
+  
+  # predict tb inc to 2035 based on lm
+  ## @Jaeyoon - seem to predict to 2035 twice? once inside this function, and once for pred1
+  ## do we need both of these, or can we only do this once?
+  predicted_tb_inc <- predict_tb_inc(year_start, fit)
+ 
+ 
+  to_2035 <- data.frame(year=2019:2035, e_inc_100k= replicate(17, "NA"))
+  # need to do this as doesn't like the rbind with e_inc_100k_lo, e_inc_100k_hi
+  tmp_df_country <- df_country %>% select(year, e_inc_100k)
+  one_country <- rbind(tmp_df_country, to_2035)
+  
+  
+  target_output  <- calc_target(df_country, one_country)
+  df_target <- target_output$df_target
+  fit.target <- target_output$fit.target
+  
+  # add predicted incidence based on linear regression model, through year 2035
+  pred1 <- one_country %>% 
+    mutate(pred_num_100k = predict(fit, newdata = one_country, type = "response"))
+  pred1[] <- lapply(pred1, function(x) ifelse(x<10, 10, x))
+  
+  #new.df <- data.frame(year = pred1$year)
   
   # add target TB incidence for each year
   # keep in mind: only relevant for 2015 and onwards
@@ -87,6 +107,7 @@ model <- function(country_name, pop){
     mutate(target_100k = predict(fit.target, pred1))
   
   # population
+  pop <- read_in_pop("population_ALL.csv")
   pop_country <- pop %>% filter(country == country_name)
   
   pred3 <- pred2 %>% 
@@ -125,7 +146,7 @@ model <- function(country_name, pop){
   
   trend <- ggplot() + geom_point(data = df_country, aes(x = year, y = e_inc_100k)) +
     geom_point(data = df_target, aes(x = year, y = num), colour = "#7CAE00") +
-    geom_line(aes(x = year, y = predict_value), data = regression, color = "#F8766D") +
+    geom_line(aes(x = year, y = predict_value), data = predicted_tb_inc, color = "#F8766D") +
     geom_ribbon(data = df_country, aes(x = year, ymin=e_inc_100k_lo, ymax = e_inc_100k_hi), alpha = 0.3) +
     xlab("Year") + ylab("Incidence of TB \n (per 100,000)") + 
     ggtitle(country_name) + 
@@ -151,7 +172,7 @@ master <- master %>% filter(country %in% all_countries)
 ## stopifnot will error if the expression is not true
 stopifnot(length(unique(master$country)) == 40)
 
-pop <- read_in_pop("population_ALL.csv")
+#population <- read_in_pop("population_ALL.csv")
 
 ## Model for all countries
 
@@ -160,7 +181,7 @@ pop <- read_in_pop("population_ALL.csv")
 ## got it working with lapply instead, but not ideal as the start dates
 ## had to go inside the function.
 
-all_countries_projection <- lapply(all_countries, model, pop = pop)
+all_countries_projection <- lapply(all_countries, model_main)
 do.call(grid.arrange, all_countries_projection)
 
-
+model_main('Angola')
