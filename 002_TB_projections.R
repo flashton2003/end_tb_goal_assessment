@@ -24,12 +24,14 @@ shorten_country_name <- function(country_name){
   return(country_name)
 }
 
-model <- function(country_name, year_start){
-  
+model <- function(country_name){
+  ## need to get the year from the name, as mapply not working
+  years <- c(2011, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2010, 2000, 2012, 2015, 2000, 2000, 2005, 2000, 2000, 2010, 2000, 2007, 2013, 2015, 2012, 2009, 2011, 2000, 2012, 2000, 2016, 2011, 2009, 2009, 2016, 2000, 2012, 2006, 2000, 2000, 2000)
+  names(years) <- c("Angola", "Bangladesh", "Botswana", "Brazil", "Cambodia", "Cameroon", "Central African Republic", "Chad", "China", "Congo", "Democratic People's Republic of Korea", "Democratic Republic of the Congo", "Eswatini", "Ethiopia", "Ghana", "Guinea-Bissau", "India", "Indonesia", "Kenya", "Laos", "Lesotho", "Liberia", "Malawi", "Mozambique", "Myanmar", "Namibia", "Nigeria", "Pakistan", "Papua New Guinea", "Philippines", "Republic of Korea", "Russian Federation", "Sierra Leone", "South Africa", "Thailand", "Uganda", "United Republic of Tanzania", "Vietnam", "Zambia", "Zimbabwe")
   # select country, year, TB incidence, population
   df_country <- master %>% filter(country == country_name) %>% 
     select(year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
-  
+  year_start <- years[country_name]
   # row begins at year_start
   row <- as.numeric(rownames(df_country[df_country$year == year_start,]))
   
@@ -128,16 +130,8 @@ model <- function(country_name, year_start){
 # store only the data of 40 countries of interest into master
 master <- read.csv("who_ALL.csv")
 master <- master %>% select(country, year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
-all_countries <- c("Angola","Bangladesh","Brazil","Botswana","Cambodia","Cameroon",
-                   "Central African Republic","Chad","China","Congo",
-                   "Democratic People's Republic of Korea",
-                   "Democratic Republic of the Congo","Eswatini","Ethiopia","Ghana",
-                   "Guinea-Bissau","India","Indonesia","Kenya",
-                   "Laos","Lesotho","Liberia","Malawi",
-                   "Mozambique","Myanmar","Namibia", "Nigeria", "Pakistan",
-                   "Papua New Guinea","Philippines","Republic of Korea",
-                   "Russian Federation","Sierra Leone","South Africa","Thailand",
-                   "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
+all_countries <- c("Angola","Bangladesh","Brazil","Botswana","Cambodia","Cameroon", "Central African Republic","Chad","China","Congo", "Democratic People's Republic of Korea", "Democratic Republic of the Congo","Eswatini","Ethiopia","Ghana", "Guinea-Bissau","India","Indonesia","Kenya", "Laos","Lesotho","Liberia","Malawi", "Mozambique","Myanmar","Namibia", "Nigeria", "Pakistan", "Papua New Guinea","Philippines","Republic of Korea", "Russian Federation","Sierra Leone","South Africa","Thailand", "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
+
 master <- master %>% filter(country %in% all_countries)
 
 ## check -- should be 40 countries
@@ -156,84 +150,23 @@ pop$year <- as.numeric(substr(pop$year, 2, 5))
 
 ## Model for all countries
 
-## trying to vectorise model function with mapply, but can't
+## tried to vectorise model function with mapply, but can't
 ## get grid.arrange working on the output
-## doesn't seem to be an mapply
+## got it working with lapply instead, but not ideal as the start dates
+## had to go inside the function.
 
 grid.arrange(trAngola)
 
-cn <- c('Angola', 'Botswana')
-cy <- c(2011, 2000)
-
-cn <- c('Angola')
-cy <- c(2011)
-
-output <- mapply(model, cn, cy)
-
-do.call(grid.arrange, eg)
-
-grid.arrange(eg)
-
-grid.arrange(trAngola, trBotswana)
-
-eg <- c(trAngola, trBotswana)
-
-trAngola <- model('Angola', 2011)
-trBotswana <- model('Botswana', 2000)
-trBrazil <- model('Brazil', 2000)
-trCambodia <- model('Cambodia', 2000)
-trCameroon <- model('Cameroon', 2004)
-trCentral_African_Republic <- model('Central African Republic', 2000)
-trChad <- model('Chad', 2003)
-trChina <- model('China', 2000)
-trCongo <- model('Congo', 2010)
-trDRC <- model("Democratic Republic of the Congo", 2012)
-trEswatini <- model('Eswatini', 2006)
-trEthiopia <- model('Ethiopia', 2000)
-trGhana <- model('Ghana', 2000)
-trIndia <- model('India', 2000)
-trIndonesia <- model('Indonesia', 2000)
-trKenya <- model('Kenya', 2006)
-trLaos <- model("Laos", 2000)
-trLesotho <- model('Lesotho', 2005)
-trLiberia <- model('Liberia', 2013)
-trMalawi <- model('Malawi', 2006)
-trMozambique <- model('Mozambique', 2012)
-trMyanmar <- model('Myanmar', 2000)
-trNamibia <- model('Namibia', 2004)
-trPakistan <- model('Pakistan', 2012)
-trPhilippines <- model('Philippines', 2007)
-trRepublicofKorea <- model('Republic of Korea', 2011)
-trRussia <- model('Russian Federation', 2008)
-trSierraLeone <- model('Sierra Leone', 2009)
-trSouthAfrica <- model('South Africa', 2005)
-trThailand <- model('Thailand', 2000)
-trTanzania <- model('United Republic of Tanzania', 2005)
-trUganda <- model('Uganda', 2005)
-trVietnam <- model('Vietnam', 2000)
-trZambia <- model('Zambia', 2000)
-trZimbabwe <- model('Zimbabwe', 2000)
 
 
-## everything 
+all_countries_projection <- lapply(all_countries, model)
+model("Malawi")
 
-grid.arrange(trAngola, trBotswana, trBrazil, trCambodia, trCameroon, trCentral_African_Republic, trChad, trChina, trCongo, trDRC, trEswatini, trEthiopia, trGhana, trIndia, trIndonesia, trKenya, trLaos, trLesotho, trLiberia, trMalawi, trMozambique, trMyanmar, trNamibia, trPakistan, trPhilippines, trRepublicofKorea, trRussia, trSierraLeone, trSouthAfrica, trThailand, trTanzania, trUganda, trVietnam, trZambia, trZimbabwe)
-
-# double checking
-
-trBangladesh <- model('Bangladesh', 2000)
-trGuineaBissau <- model('Guinea-Bissau', 2000)
-trZimbabwe <- model('Zimbabwe', 2000)
+do.call(grid.arrange, all_countries_projection)
 
 
-# bell curve
-grid.arrange(trAngola, trCongo, trKenya, trEswatini, trLesotho, trNamibia, trSierraLeone, trSouthAfrica)
+##
 
-# increase
-# grid.arrange(trLiberia, trMozambique)
-
-# other
-grid.arrange(trBrazil, trCentral_African_Republic, trDRC, trPakistan, trPhilippines, trRepublicofKorea, trRussia, trTanzania, trMalawi, trUganda)
-
-# normal linear decrease
-grid.arrange(trBotswana, trCambodia, trCameroon, trChad, trChina, trEthiopia, trGhana, trIndia, trIndonesia, trLaos, trMyanmar, trThailand, trVietnam, trZambia, trZimbabwe)
+trAngola <- model("Angola")
+trZimbabwe <- model("Zimbabwe")
+trBangladesh

@@ -76,16 +76,7 @@ plot_trend_no_ci <- function(country_name, r2_res){
 
 master <- read.csv("who_ALL.csv")
 master <- master %>% select(country, year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
-all_countries <- c("Angola","Bangladesh","Brazil","Botswana","Cambodia","Cameroon",
-                   "Central African Republic","Chad","China","Congo",
-                   "Democratic People's Republic of Korea",
-                   "Democratic Republic of the Congo","Eswatini","Ethiopia","Ghana",
-                   "Guinea-Bissau","India","Indonesia","Kenya",
-                   "Laos","Lesotho","Liberia","Malawi",
-                   "Mozambique","Myanmar","Namibia", "Nigeria", "Pakistan",
-                   "Papua New Guinea","Philippines","Republic of Korea",
-                   "Russian Federation","Sierra Leone","South Africa","Thailand",
-                   "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
+all_countries <- c("Angola","Bangladesh","Brazil","Botswana","Cambodia","Cameroon", "Central African Republic","Chad","China","Congo", "Democratic People's Republic of Korea", "Democratic Republic of the Congo","Eswatini","Ethiopia","Ghana", "Guinea-Bissau","India","Indonesia","Kenya", "Laos","Lesotho","Liberia","Malawi", "Mozambique","Myanmar","Namibia", "Nigeria", "Pakistan", "Papua New Guinea","Philippines","Republic of Korea", "Russian Federation","Sierra Leone","South Africa","Thailand", "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
 
 
 ## here, we run get_r2_and_coef on everything in all_countries
