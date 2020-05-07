@@ -24,7 +24,20 @@ shorten_country_name <- function(country_name){
   return(country_name)
 }
 
-model <- function(country_name){
+read_in_pop <- function(pop_handle){
+  # process population for each of the 40 countries for years 2000-2035
+  # store in dataframe pop_df
+  pop <- read.csv(pop_handle) %>% filter(country %in% all_countries)
+  keycol <- 'year'
+  valuecol <- 'population'
+  gathercols <- colnames(pop)[2:37]
+  pop <- gather_(pop, keycol, valuecol, gathercols)
+  # get rid of the "X" (change X2001 to 2001)
+  pop$year <- as.numeric(substr(pop$year, 2, 5))
+  return(pop)
+}
+
+model <- function(country_name, pop){
   ## need to get the year from the name, as mapply not working
   years <- c(2011, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2010, 2000, 2012, 2015, 2000, 2000, 2005, 2000, 2000, 2010, 2000, 2007, 2013, 2015, 2012, 2009, 2011, 2000, 2012, 2000, 2016, 2011, 2009, 2009, 2016, 2000, 2012, 2006, 2000, 2000, 2000)
   names(years) <- c("Angola", "Bangladesh", "Botswana", "Brazil", "Cambodia", "Cameroon", "Central African Republic", "Chad", "China", "Congo", "Democratic People's Republic of Korea", "Democratic Republic of the Congo", "Eswatini", "Ethiopia", "Ghana", "Guinea-Bissau", "India", "Indonesia", "Kenya", "Laos", "Lesotho", "Liberia", "Malawi", "Mozambique", "Myanmar", "Namibia", "Nigeria", "Pakistan", "Papua New Guinea", "Philippines", "Republic of Korea", "Russian Federation", "Sierra Leone", "South Africa", "Thailand", "Uganda", "United Republic of Tanzania", "Vietnam", "Zambia", "Zimbabwe")
@@ -138,15 +151,7 @@ master <- master %>% filter(country %in% all_countries)
 ## stopifnot will error if the expression is not true
 stopifnot(length(unique(master$country)) == 40)
 
-# process population for each of the 40 countries for years 2000-2035
-# store in dataframe pop_df
-pop <- read.csv("population_ALL.csv") %>% filter(country %in% all_countries)
-keycol <- 'year'
-valuecol <- 'population'
-gathercols <- colnames(pop)[2:37]
-pop <- gather_(pop, keycol, valuecol, gathercols)
-# get rid of the "X" (change X2001 to 2001)
-pop$year <- as.numeric(substr(pop$year, 2, 5))
+pop <- read_in_pop("population_ALL.csv")
 
 ## Model for all countries
 
@@ -155,18 +160,7 @@ pop$year <- as.numeric(substr(pop$year, 2, 5))
 ## got it working with lapply instead, but not ideal as the start dates
 ## had to go inside the function.
 
-grid.arrange(trAngola)
-
-
-
-all_countries_projection <- lapply(all_countries, model)
-model("Malawi")
-
+all_countries_projection <- lapply(all_countries, model, pop = pop)
 do.call(grid.arrange, all_countries_projection)
 
 
-##
-
-trAngola <- model("Angola")
-trZimbabwe <- model("Zimbabwe")
-trBangladesh
