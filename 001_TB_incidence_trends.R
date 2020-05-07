@@ -11,7 +11,6 @@ library(gridExtra)
 ## get_r2 calculates the r2 for a linear regression of inc vs year
 ## it outputs a one row tibble with columns country name and r2
 get_r2_and_coef <- function(country_name){
- 
   one_country <- master %>% filter(country == country_name) %>% select(year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
   linear_model <- lm(e_inc_100k ~ year, data = one_country)
   #print(summary(linear_model))
@@ -117,6 +116,13 @@ plot_trend_no_ci("Liberia", r2_res)
 plot_trend_no_ci("Angola", r2_res)
 plot_trend_no_ci("Mozambique", r2_res)
 
+trAngola <- plot_trend("Angola", r2_res = r2_res)
+trBrazil <- plot_trend("Brazil", r2_res = r2_res)
+
+grid.arrange(trAngola, trBrazil)
+eg <- c("Angola","Brazil")
+lp_eg <- lapply(eg, plot_trend, r2_res = r2_res)
+do.call(grid.arrange, lp_eg)
 ## generate plots forc countries which will take analysis forward for
 
 hq_countries <- c("Angola","Brazil","Botswana","Cambodia","Cameroon","Chad","China", "Congo", "Democratic Republic of the Congo", "Eswatini","Ethiopia","Ghana", "Guinea-Bissau", "India","Indonesia","Kenya", "Laos","Lesotho","Liberia","Malawi", "Mozambique","Myanmar","Namibia", "Pakistan", "Philippines", "Republic of Korea", "Russian Federation", "Sierra Leone", "South Africa","Thailand", "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")

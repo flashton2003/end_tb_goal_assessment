@@ -5,39 +5,6 @@ library(ggfortify)
 library(ggplot2)
 library(gridExtra)
 
-# processing the data
-# store only the data of 40 countries of interest into master
-master <- read.csv("who_ALL.csv")
-master <- master %>% select(country, year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
-all_countries <- c("Angola","Bangladesh","Brazil","Botswana","Cambodia","Cameroon",
-                   "Central African Republic","Chad","China","Congo",
-                   "Democratic People's Republic of Korea",
-                   "Democratic Republic of the Congo","Eswatini","Ethiopia","Ghana",
-                   "Guinea-Bissau","India","Indonesia","Kenya",
-                   "Laos","Lesotho","Liberia","Malawi",
-                   "Mozambique","Myanmar","Namibia", "Nigeria", "Pakistan",
-                   "Papua New Guinea","Philippines","Republic of Korea",
-                   "Russian Federation","Sierra Leone","South Africa","Thailand",
-                   "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
-master <- master %>% filter(country %in% all_countries)
-
-## check -- should be 40 countries
-## stopifnot will exit the script if the expression is not true
-stopifnot(length(unique(master$country)) == 40)
-
-# process population for each of the 40 countries for years 2000-2035
-# store in dataframe pop_df
-pop <- read.csv("population_ALL.csv") %>% filter(country %in% all_countries)
-keycol <- 'year'
-valuecol <- 'population'
-gathercols <- colnames(pop)[2:37]
-pop <- gather_(pop, keycol, valuecol, gathercols)
-# get rid of the "X" (change X2001 to 2001)
-pop$year <- as.numeric(substr(pop$year, 2, 5))
-
-# check -- should be 40 countries
-# unique(pop$country)
-
 # in addition to country name, also input year_start
 # year_start is the year in which incidence started decreasing linearly
 # country names are too long to fit in graph title
@@ -56,7 +23,6 @@ shorten_country_name <- function(country_name){
   }
   return(country_name)
 }
-
 
 model <- function(country_name, year_start){
   
@@ -154,13 +120,65 @@ model <- function(country_name, year_start){
   
 }
 
-# Model for all countries
 
-#trRussia <- model('Russian Federation', 2010)
 
-#grid.arrange(trRussia)
 
-trAngola <- model('Angola', 2010)
+
+# processing the data
+# store only the data of 40 countries of interest into master
+master <- read.csv("who_ALL.csv")
+master <- master %>% select(country, year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
+all_countries <- c("Angola","Bangladesh","Brazil","Botswana","Cambodia","Cameroon",
+                   "Central African Republic","Chad","China","Congo",
+                   "Democratic People's Republic of Korea",
+                   "Democratic Republic of the Congo","Eswatini","Ethiopia","Ghana",
+                   "Guinea-Bissau","India","Indonesia","Kenya",
+                   "Laos","Lesotho","Liberia","Malawi",
+                   "Mozambique","Myanmar","Namibia", "Nigeria", "Pakistan",
+                   "Papua New Guinea","Philippines","Republic of Korea",
+                   "Russian Federation","Sierra Leone","South Africa","Thailand",
+                   "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
+master <- master %>% filter(country %in% all_countries)
+
+## check -- should be 40 countries
+## stopifnot will error if the expression is not true
+stopifnot(length(unique(master$country)) == 40)
+
+# process population for each of the 40 countries for years 2000-2035
+# store in dataframe pop_df
+pop <- read.csv("population_ALL.csv") %>% filter(country %in% all_countries)
+keycol <- 'year'
+valuecol <- 'population'
+gathercols <- colnames(pop)[2:37]
+pop <- gather_(pop, keycol, valuecol, gathercols)
+# get rid of the "X" (change X2001 to 2001)
+pop$year <- as.numeric(substr(pop$year, 2, 5))
+
+## Model for all countries
+
+## trying to vectorise model function with mapply, but can't
+## get grid.arrange working on the output
+## doesn't seem to be an mapply
+
+grid.arrange(trAngola)
+
+cn <- c('Angola', 'Botswana')
+cy <- c(2011, 2000)
+
+cn <- c('Angola')
+cy <- c(2011)
+
+output <- mapply(model, cn, cy)
+
+do.call(grid.arrange, eg)
+
+grid.arrange(eg)
+
+grid.arrange(trAngola, trBotswana)
+
+eg <- c(trAngola, trBotswana)
+
+trAngola <- model('Angola', 2011)
 trBotswana <- model('Botswana', 2000)
 trBrazil <- model('Brazil', 2000)
 trCambodia <- model('Cambodia', 2000)
