@@ -82,10 +82,10 @@ add_ci_to_predicted <- function(predicted_tb_inc, df_country){
   tmp_predicted_tb_inc <- predicted_tb_inc %>% filter(year > 2018)
   tmp_predicted_tb_inc <- tmp_predicted_tb_inc %>% mutate(proj_ci_lo = predict_value * low_bound_ratio) %>% mutate(proj_ci_hi = predict_value * high_bound_ratio)
   
-  ## and then combien back 
+  ## and then combine back with predicted_tb_inc using a join
   predicted_tb_inc <- left_join(predicted_tb_inc, tmp_predicted_tb_inc)
-  
-  print(tail(tmp_predicted_tb_inc))
+  #print(df_country)
+  print(tail(predicted_tb_inc))
   return(predicted_tb_inc)
 }
  
@@ -125,6 +125,7 @@ model_main <- function(country_name){
   ## calculate the targets
   target_output  <- calc_target(df_country, one_country)
   df_target <- target_output$df_target
+  print(df_target)
   fit.target <- target_output$fit.target
   
   # add predicted incidence based on linear regression model, through year 2035
@@ -163,7 +164,10 @@ model_main <- function(country_name){
   # calculate the extra number of cases from 2020 to 2035:
   extra_cases <- year_diffs %>% 
     summarize(extra_cases = as.integer(sum(diff)))
-  
+  ## this is a hack to get the number of extra cases out of the script
+  ## if each part of the script were a function, it would be easy to gather up these data
+  ## for all the coutnries and write one file
+  write_tsv(data.frame(c(country_name, extra_cases)), paste('extra_cases', country_name))
   # return(list(trend, tot_extra_num_cases_2020_2035))
   
   # max incidence value
@@ -176,7 +180,6 @@ model_main <- function(country_name){
   
   # graph modified linear model, include the dataframe showing
   # extra number of cases in the graph
-  print(tail(predicted_tb_inc))
   trend <- ggplot() + geom_point(data = df_country, aes(x = year, y = e_inc_100k)) +
     geom_point(data = df_target, aes(x = year, y = num), colour = "#7CAE00") +
     geom_line(aes(x = year, y = predict_value), data = predicted_tb_inc, color = "#F8766D") +
@@ -191,8 +194,7 @@ model_main <- function(country_name){
   
 }
 
-model_main('Angola')
-
+model_main("Cambodia")
 
 
 

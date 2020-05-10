@@ -101,7 +101,7 @@ plot_trend_no_ci("Guinea-Bissau", r2_res)
 plot_trend_no_ci("Pakistan", r2_res)
 plot_trend_no_ci("Philippines", r2_res)
 plot_trend_no_ci("Sierra Leone", r2_res)
-plot_trend_no_ci("Uganda", r2_res)
+plot_trend_no_ci("Myanmar", r2_res)
 
 plot_trend_no_ci("Liberia", r2_res)
 plot_trend_no_ci("Angola", r2_res)
@@ -122,3 +122,21 @@ recently_linear <- c('Republic of Korea', 'Congo', 'Russian Federation', 'South 
 
 hq_plots <- lapply(recently_linear, plot_trend, r2_res = r2_res)
 do.call(grid.arrange, hq_plots)
+
+## 2020-05-08
+
+linear_decrease <- c("Botswana", "Cambodia", "Cameroon", "Chad", "China", "Ethiopia", "Ghana", "India", "Indonesia", "Laos", "Thailand", "Vietnam", "Zambia", "Zimbabwe")
+linear_decrease_plots <- lapply(linear_decrease, plot_trend, r2_res = r2_res)
+do.call(grid.arrange, linear_decrease_plots)
+
+increasing <- c("Angola", "Guinea-Bissau", "Liberia", "Mozambique")
+increasing_plots <- lapply(increasing, plot_trend, r2_res = r2_res)
+do.call(grid.arrange, increasing_plots)
+
+flat <- c("Bangladesh", "Nigeria", "Democratic People's Republic of Korea", "Papua New Guinea")
+flat_plots <- lapply(flat, plot_trend, r2_res = r2_res)
+do.call(grid.arrange, flat_plots)
+
+peak_in_00s <- c('Angola', 'Cameroon', 'Congo', 'Eswatini', 'Kenya', 'Lesotho', 'Malawi', 'Namibia', 'South Africa', 'United Republic of Tanzania', 'Zimbabwe')
+peak_in_00s_plots <- lapply(peak_in_00s, plot_trend, r2_res = r2_res)
+do.call(grid.arrange, peak_in_00s_plots)
