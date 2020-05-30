@@ -5,37 +5,10 @@ library(ggfortify)
 library(ggplot2)
 library(gridExtra)
 
+source("source-functions.R")
+
 # in addition to country name, also input year_start
 # year_start is the year in which incidence started decreasing linearly
-# country names are too long to fit in graph title
-shorten_country_name <- function(country_name){
-  if (country_name == "Democratic Republic of the Congo"){
-    country_name = "DR Congo"
-  }
-  if (country_name == "Central African Republic"){
-    country_name = "Central Af. Republic"
-  }
-  if (country_name == "United Republic of Tanzania"){
-    country_name = "Tanzania"
-  }
-  if (country_name == "Russian Federation"){
-    country_name = "Russia"
-  }
-  return(country_name)
-}
-
-read_in_pop <- function(pop_handle){
-  # process population for each of the 40 countries for years 2000-2035
-  # store in dataframe pop_df
-  pop <- read.csv(pop_handle) %>% filter(country %in% all_countries)
-  keycol <- 'year'
-  valuecol <- 'population'
-  gathercols <- colnames(pop)[2:37]
-  pop <- gather_(pop, keycol, valuecol, gathercols)
-  # get rid of the "X" (change X2001 to 2001)
-  pop$year <- as.numeric(substr(pop$year, 2, 5))
-  return(pop)
-}
 
 predict_tb_inc <- function(year_start, fit){
   # insert predicted values to df
@@ -89,12 +62,15 @@ add_ci_to_predicted <- function(predicted_tb_inc, df_country){
   return(predicted_tb_inc)
 }
  
- 
+# project TB incidence through 2035
 model_main <- function(country_name){
-  ## need to get the year from the name, as mapply not working
-  ## not ideal to have this specified within the function
-  years <- c(2011, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2010, 2000, 2012, 2015, 2000, 2000, 2005, 2000, 2000, 2010, 2000, 2007, 2013, 2015, 2012, 2009, 2011, 2000, 2012, 2000, 2016, 2011, 2009, 2009, 2016, 2000, 2012, 2006, 2000, 2000, 2000)
-  names(years) <- c("Angola", "Bangladesh", "Botswana", "Brazil", "Cambodia", "Cameroon", "Central African Republic", "Chad", "China", "Congo", "Democratic People's Republic of Korea", "Democratic Republic of the Congo", "Eswatini", "Ethiopia", "Ghana", "Guinea-Bissau", "India", "Indonesia", "Kenya", "Laos", "Lesotho", "Liberia", "Malawi", "Mozambique", "Myanmar", "Namibia", "Nigeria", "Pakistan", "Papua New Guinea", "Philippines", "Republic of Korea", "Russian Federation", "Sierra Leone", "South Africa", "Thailand", "Uganda", "United Republic of Tanzania", "Vietnam", "Zambia", "Zimbabwe")
+  
+  # throw warning if input country is not one of the 40 of interest
+  throwWarning(country_name)
+
+  # the start year of each of the 40 countries specified in source function
+  # as vector "years" and "names"
+  
   # select country, year, TB incidence, population
   df_country <- master %>% filter(country == country_name) %>% 
     select(year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
@@ -111,13 +87,11 @@ model_main <- function(country_name){
   ## do we need both of these, or can we only do this once?
   predicted_tb_inc <- predict_tb_inc(year_start, fit)
  
-  ## add a new function which adds teh error bars on prediction
+  ## add a new function which adds error bars on prediction
   ## it needs to take in 1) predicted_tb_inc 2) tb_inc and confidence intervals
   ## for the last 5 years, get the ratio of the estimate to hte high and hte low CI, take teh average of this over 5 years
   ## then, make new columns, predicting the bounds based on the average.
-  
   predicted_tb_inc <- add_ci_to_predicted(predicted_tb_inc, df_country)
-  
   
   ## get df for one country
   one_country <- get_one_country_df(df_country)
@@ -141,14 +115,13 @@ model_main <- function(country_name){
     mutate(target_100k = predict(fit.target, pred1))
   
   # population
-  pop <- read_in_pop("population_ALL.csv")
   pop_country <- pop %>% filter(country == country_name)
   
   pred3 <- pred2 %>% 
     mutate(pop = pop_country$population)
   
   # calculate the number of cases each year under real data model
-  # this is the per 100000 rate multiplied by the population
+  # this is the per 100,000 rate multiplied by the population
   pred_num_cases_df <- pred3 %>% mutate(pred_cases = (as.numeric(pred3$pred_num_100k)/100000)*as.numeric(pred3$pop))
   
   # do the same for the target model
@@ -159,7 +132,6 @@ model_main <- function(country_name){
   with_diff_df <- target_num_cases_df %>% mutate(diff = as.numeric(target_num_cases_df$pred_cases) - as.numeric(target_num_cases_df$target_num_cases))
   
   year_diffs <- with_diff_df %>% select(year, diff) %>% filter(year > 2019)
-  
   
   # calculate the extra number of cases from 2020 to 2035:
   extra_cases <- year_diffs %>% 
@@ -178,39 +150,38 @@ model_main <- function(country_name){
   range_inc = max_inc_100k - min_inc_100k  
   country_name <- shorten_country_name(country_name)
   
+  # country name to be in vernacular form/shortened to fit in graph
+  shorten_country_name(country_name)
+  
   # graph modified linear model, include the dataframe showing
   # extra number of cases in the graph
   trend <- ggplot() + geom_point(data = df_country, aes(x = year, y = e_inc_100k)) +
-    geom_point(data = df_target, aes(x = year, y = num), colour = "#7CAE00") +
-    geom_line(aes(x = year, y = predict_value), data = predicted_tb_inc, color = "#F8766D") +
+    geom_point(data = df_target, aes(x = year, y = num), colour = "red", size = 2) +
+    geom_line(aes(x = year, y = predict_value), data = predicted_tb_inc, colour = "blue", size = 1.2) +
     geom_ribbon(data = df_country, aes(x = year, ymin=e_inc_100k_lo, ymax = e_inc_100k_hi), alpha = 0.3) +
-    geom_ribbon(data = predicted_tb_inc, aes(x = year, ymin=proj_ci_lo, ymax = proj_ci_hi, fill = "#F8766D"), alpha = 0.3) +
-    xlab("Year") + ylab("Incidence of TB \n (per 100,000)") + 
+    geom_ribbon(data = predicted_tb_inc, aes(x = year, ymin=proj_ci_lo, ymax = proj_ci_hi), fill = "blue", alpha = 0.3) +
+    xlab("Year") + ylab("TB Incidence per 100k") + 
     ggtitle(country_name) + 
-    annotation_custom(tableGrob(extra_cases, rows = NULL), xmin = 2025, ymin = (max_inc_100k - (0.3*range_inc))) + 
-    theme(legend.position = "none") 
+    annotation_custom(tableGrob(extra_cases, cols = NULL, rows = NULL, theme = ttheme_minimal(base_size = 8)), xmin = 2022, ymin = (max_inc_100k - (0.2*range_inc))) + 
+    theme(legend.position = "none", axis.text.y = element_text(size = 8), axis.title.y = element_text(size = 10))
+  
+  # previous y-axis was: ylab("Incidence of TB \n (per 100,000)")
   
   trend
   
 }
 
+# test
 model_main("Cambodia")
 
-
-
-# processing the data
-# store only the data of 40 countries of interest into master
-master <- read.csv("who_ALL.csv")
+# process master
 master <- master %>% select(country, year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
-all_countries <- c("Angola","Bangladesh","Brazil","Botswana","Cambodia","Cameroon", "Central African Republic","Chad","China","Congo", "Democratic People's Republic of Korea", "Democratic Republic of the Congo","Eswatini","Ethiopia","Ghana", "Guinea-Bissau","India","Indonesia","Kenya", "Laos","Lesotho","Liberia","Malawi", "Mozambique","Myanmar","Namibia", "Nigeria", "Pakistan", "Papua New Guinea","Philippines","Republic of Korea", "Russian Federation","Sierra Leone","South Africa","Thailand", "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
-
 master <- master %>% filter(country %in% all_countries)
 
 ## check -- should be 40 countries
 ## stopifnot will error if the expression is not true
-stopifnot(length(unique(master$country)) == 40)
 
-#population <- read_in_pop("population_ALL.csv")
+stopifnot(length(unique(master$country)) == 40)
 
 ## Model for all countries
 
@@ -220,5 +191,5 @@ stopifnot(length(unique(master$country)) == 40)
 ## had to go inside the function.
 
 all_countries_projection <- lapply(all_countries, model_main)
-do.call(grid.arrange, all_countries_projection)
-
+# generate figures in 2 pages (20 graphs/page) with the specified # rows and columbs
+all <- marrangeGrob(all_countries_projection, nrow = 4, ncol = 5)
