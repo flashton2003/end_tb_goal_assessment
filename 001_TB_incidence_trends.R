@@ -5,19 +5,24 @@ library(tibble)
 library(ggpmisc)
 library(gridExtra)
 
-
-
+source("source-functions.R")
+# contains master
+# contains all_countries list
 
 ## get_r2 calculates the r2 for a linear regression of inc vs year
 ## it outputs a one row tibble with columns country name and r2
 get_r2_and_coef <- function(country_name){
+  
+  # throw error if country_name not in master
+  throwWarning(country_name)
+
   one_country <- master %>% filter(country == country_name) %>% select(year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
   linear_model <- lm(e_inc_100k ~ year, data = one_country)
   #print(summary(linear_model))
   ## this tryCatch function will run summary on the linear model
   ## and if summary returns a warning about the essentially perfect fit so summary
   ## unreliable, then r_sq is NaN
-  ## also wwant to get the co-efficent which tells us about slope of line
+  ## also want to get the co-efficent which tells us about slope of line
   r_sq <- tryCatch(
     {
       r_sq <- summary(linear_model)$r.squared
@@ -38,7 +43,9 @@ get_r2_and_coef <- function(country_name){
   return(o)
 }
 
-get_r2_and_coef("Bangladesh")
+# testing:
+get_r2_and_coef("Bangladesh") # return NaN and NaN
+get_r2_and_coef("Switzerland") # return warning
 
 plot_trend <- function(country_name, r2_res){
   one_country <- master %>% filter(country == country_name) %>% select(year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi) 
@@ -74,10 +81,7 @@ plot_trend_no_ci <- function(country_name, r2_res){
 }
 
 
-master <- read.csv("who_ALL.csv")
 master <- master %>% select(country, year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
-all_countries <- c("Angola","Bangladesh","Brazil","Botswana","Cambodia","Cameroon", "Central African Republic","Chad","China","Congo", "Democratic People's Republic of Korea", "Democratic Republic of the Congo","Eswatini","Ethiopia","Ghana", "Guinea-Bissau","India","Indonesia","Kenya", "Laos","Lesotho","Liberia","Malawi", "Mozambique","Myanmar","Namibia", "Nigeria", "Pakistan", "Papua New Guinea","Philippines","Republic of Korea", "Russian Federation","Sierra Leone","South Africa","Thailand", "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
-
 
 ## here, we run get_r2_and_coef on everything in all_countries
 ## this outputs a list of tibbles, which we then merge with
