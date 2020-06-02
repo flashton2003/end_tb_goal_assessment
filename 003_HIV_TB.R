@@ -12,6 +12,9 @@ source("000_source-functions.R")
 # calculating prevalence of uncontrolled HIV (%, unc_hiv) per year
 
 prev_uncontrolled_hiv <- function(country_name){
+  
+  # throw warning if country_name not in master
+  throwWarning(country_name)
 
   country_arv <- arv %>% filter(country == country_name)
   hiv_prevalence <- (prev %>% filter(country == country_name))$hiv_prevalence
@@ -22,27 +25,37 @@ prev_uncontrolled_hiv <- function(country_name){
   
   arv.prev <- arv.prev %>% mutate(unc_hiv = ((100 - hiv_coverage)/100) * hiv_prevalence)
   
-  # code that will show the legend:
-      # p <- ggplot(arv.prev, aes(year, y = value, color = variable)) +
-        # geom_point(aes(y = hiv_prevalence, col = "HIV Prevalence (%)")) +
-        # geom_point(aes(y = unc_hiv, col = "Uncontrolled HIV (%)")) +
-        # xlab("Year") + ylab("% of Total Population") + ggtitle(country_name)
+  # shorten country name to fit in graph/use vernacular names
+  country_name <- shorten_country_name(country_name)
   
-  # will not display legend:
-  p <- ggplot(arv.prev, aes(year, y = value, color = variable)) +
-  geom_point(aes(y = hiv_prevalence, col = "HIV Prevalence (%)"), show.legend = FALSE) +
-  geom_point(aes(y = unc_hiv, col = "Uncontrolled HIV (%)"), show.legend = FALSE) +
-  xlab("Year") + ylab("% of Total Population") + ggtitle(country_name)
-  
-  p + theme(legend.position = "none")
+  # display graph with the legend:
+  p <- ggplot(arv.prev, aes(year, y = value, colour = variable)) +
+      geom_point(aes(y = hiv_prevalence, col = "Total")) +
+      geom_point(aes(y = unc_hiv, col = "Uncontrolled")) +
+      xlab("Year") + ylab("% Population") + ggtitle(country_name) +
+      # make legend horizontal in one row
+      guides(colour = guide_legend(nrow = 1)) +
+      # modify legend title
+      labs(colour = "HIV Prevalence (%)")
   
   p
 
 }
 
+# without legend
+prev_uncontrolled_hiv_no_legend <- function(country_name){
+  prev_uncontrolled_hiv(country_name) + theme(legend.position = "none")
+}
 
-### generate graphs for the 13 countries in hpauh
+# obtain common legend
+trAngola <- prev_uncontrolled_hiv("Angola")
+legend <- get_legend(trAngola)
 
-g <- lapply(hpauh, prev_uncontrolled_hiv)
-g1 <- lapply(g, )
-do.call(grid.arrange, g)
+# generate graphs for the 13 countries of interest using lapply
+g <- lapply(hpauh, prev_uncontrolled_hiv_no_legend)
+g13 <- do.call(grid.arrange, g)
+
+# now add the common legend to bottom
+g_legend <- plot_grid(g13, legend, rel_heights = c(1, .1), ncol = 1, 
+                   align = 'v', axis = 'c')
+g_legend
