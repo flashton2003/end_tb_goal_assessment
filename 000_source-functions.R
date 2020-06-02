@@ -8,45 +8,45 @@ library(cowplot)
 
 ### dataframes from 2000 to 2018 by country
 
-  # master: all existing WHO data (includes TB incidence per 100,000 people)
-  # master used in 001_TB_incidence_trends and 002_TB_projections
-  master <- read.csv("who_ALL.csv")
-  
-  # pop: total population
-  # process population for each of the 40 countries for years 2000-2035
-  # store in dataframe pop_df
-  # pop used in 002_TB_projections
-  pop <- read.csv("population_ALL.csv")
-  keycol <- 'year'
-  valuecol <- 'population'
-  gathercols <- colnames(pop)[2:37]
-  pop <- gather_(pop, keycol, valuecol, gathercols)
-  # get rid of the "X" (change X2001 to 2001)
-  pop$year <- as.numeric(substr(pop$year, 2, 5))
-  
-  # arv: HIV antiretroviral coverage (in %)
-  # arv used in 003_HIV_TB
-  master.arv <- read.csv("hiv_arv_coverage.csv")
-  # tidy format
-  keycol <- 'year'
-  valuecol <- 'hiv_coverage'
-  gathercols <- colnames(master.arv)[2:20]
-  arv <- gather_(master.arv, keycol, valuecol, gathercols)
-  # get rid of the "X" (change X2001 to 2001)
-  arv$year <- as.numeric(substr(arv$year, 2, 5))
-  
-  # prev: HIV prevalence (in %)
-  # prev used in 003_HIV_TB
-  master.prev <- read.csv("hiv_prev_ALL.csv")
-  # tidy format
-  keycol <- 'year'
-  valuecol <- 'hiv_prevalence'
-  gathercols <- colnames(master.prev)[2:20]
-  prev <- gather_(master.prev, keycol, valuecol, gathercols)
-  # get rid of the "X" (change X2001 to 2001)
-  prev$year <- as.numeric(substr(prev$year, 2, 5))
+# master: all existing WHO data (includes TB incidence per 100,000 people)
+# master used in 001_TB_incidence_trends and 002_TB_projections
+master <- read.csv("who_ALL.csv")
 
-  
+# pop: total population
+# process population for each of the 40 countries for years 2000-2035
+# store in dataframe pop_df
+# pop used in 002_TB_projections
+pop <- read.csv("population_ALL.csv")
+keycol <- 'year'
+valuecol <- 'population'
+gathercols <- colnames(pop)[2:37]
+pop <- gather_(pop, keycol, valuecol, gathercols)
+# get rid of the "X" (change X2001 to 2001)
+pop$year <- as.numeric(substr(pop$year, 2, 5))
+
+# arv: HIV antiretroviral coverage (in %)
+# arv used in 003_HIV_TB
+master.arv <- read.csv("hiv_arv_coverage.csv")
+# tidy format
+keycol <- 'year'
+valuecol <- 'hiv_coverage'
+gathercols <- colnames(master.arv)[2:20]
+arv <- gather_(master.arv, keycol, valuecol, gathercols)
+# get rid of the "X" (change X2001 to 2001)
+arv$year <- as.numeric(substr(arv$year, 2, 5))
+
+# prev: HIV prevalence (in %)
+# prev used in 003_HIV_TB
+master.prev <- read.csv("hiv_prev_ALL.csv")
+# tidy format
+keycol <- 'year'
+valuecol <- 'hiv_prevalence'
+gathercols <- colnames(master.prev)[2:20]
+prev <- gather_(master.prev, keycol, valuecol, gathercols)
+# get rid of the "X" (change X2001 to 2001)
+prev$year <- as.numeric(substr(prev$year, 2, 5))
+
+
 ### all_countries is a list of the 40 countries of interest
 all_countries <- c("Angola","Bangladesh","Brazil","Botswana","Cambodia","Cameroon",
                    "Central African Republic","Chad","China","Congo",
@@ -59,6 +59,10 @@ all_countries <- c("Angola","Bangladesh","Brazil","Botswana","Cambodia","Cameroo
                    "Russian Federation","Sierra Leone","South Africa","Thailand",
                    "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
 
+### hpauh is a list of countries analyzed for figure HPAUH (HIV prevalence and uncontrolled HIV)
+hpauh <- c("Angola", "Cameroon", "Congo", "Eswatini", "Kenya", "Lesotho", "Malawi", 
+           "Namibia", "Sierra Leone", "South Africa", "Uganda", 
+           "United Republic of Tanzania", "Zimbabwe")
 
 # years used to project TB in 002_TB_projections
 # each of the 40 countries has a corresponding year
@@ -67,21 +71,21 @@ names(years) <- c("Angola", "Bangladesh", "Botswana", "Brazil", "Cambodia", "Cam
 
 
 ### countries grouped by shape
-  # used in 001_TB_incidence_trends
-  # 14 linear decrease (Figure CWLD from 001)
-  linear_decrease <- c("Botswana", "Cambodia", "Cameroon", "Chad", "China", "Ethiopia", "Ghana", "India", "Indonesia", "Laos", "Thailand", "Vietnam", "Zambia", "Zimbabwe")
-  # 4 increasing (Figure CWII from 001)
-  increasing <- c("Angola", "Guinea-Bissau", "Liberia", "Mozambique")
-  # 4 flat (Figure CWFI from 001)
-  flat <- c("Bangladesh", "Nigeria", "Democratic People's Republic of Korea", "Papua New Guinea")
-  # 11 peak in the 2000s (Figure CWPITN from 001)
-  peak_in_00s <- c('Angola', 'Cameroon', 'Congo', 'Eswatini', 'Kenya', 'Lesotho', 'Malawi', 'Namibia', 'South Africa', 'United Republic of Tanzania', 'Zimbabwe')
+# used in 001_TB_incidence_trends
+# 14 linear decrease (Figure CWLD from 001)
+linear_decrease <- c("Botswana", "Cambodia", "Cameroon", "Chad", "China", "Ethiopia", "Ghana", "India", "Indonesia", "Laos", "Thailand", "Vietnam", "Zambia", "Zimbabwe")
+# 4 increasing (Figure CWII from 001)
+increasing <- c("Angola", "Guinea-Bissau", "Liberia", "Mozambique")
+# 4 flat (Figure CWFI from 001)
+flat <- c("Bangladesh", "Nigeria", "Democratic People's Republic of Korea", "Papua New Guinea")
+# 11 peak in the 2000s (Figure CWPITN from 001)
+peak_in_00s <- c('Angola', 'Cameroon', 'Congo', 'Eswatini', 'Kenya', 'Lesotho', 'Malawi', 'Namibia', 'South Africa', 'United Republic of Tanzania', 'Zimbabwe')
 
 # throw warning if input country is not in the 40 countries of interest 
 throwWarning <- function(country_name)
 {
   if (country_name %in% all_countries == FALSE) warning('The input country is not among the 40 countries of interest')
- 
+  
 }
 
 # shorten country name to fit in graph; use vernacular names
