@@ -5,7 +5,7 @@ library(ggfortify)
 library(ggplot2)
 library(gridExtra)
 
-source("source-functions.R")
+source("000_source-functions.R")
 
 # in addition to country name, also input year_start
 # year_start is the year in which incidence started decreasing linearly
