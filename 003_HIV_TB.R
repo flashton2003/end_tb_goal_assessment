@@ -52,7 +52,7 @@ trAngola <- prev_uncontrolled_hiv("Angola")
 legend <- get_legend(trAngola)
 
 # generate graphs for the 13 countries of interest using lapply
-g <- lapply(hpauh, prev_uncontrolled_hiv_no_legend)
+g <- lapply(hiv_13, prev_uncontrolled_hiv_no_legend)
 g13 <- do.call(grid.arrange, g)
 
 # now add the common legend to bottom

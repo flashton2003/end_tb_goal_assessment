@@ -59,8 +59,8 @@ all_countries <- c("Angola","Bangladesh","Brazil","Botswana","Cambodia","Cameroo
                    "Russian Federation","Sierra Leone","South Africa","Thailand",
                    "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
 
-### hpauh is a list of countries analyzed for figure HPAUH (HIV prevalence and uncontrolled HIV)
-hpauh <- c("Angola", "Cameroon", "Congo", "Eswatini", "Kenya", "Lesotho", "Malawi", 
+### hiv_13 is a list of 13 countries analyzed for HIV (Figures HPAUH and )
+hiv_13 <- c("Angola", "Cameroon", "Congo", "Eswatini", "Kenya", "Lesotho", "Malawi", 
            "Namibia", "Sierra Leone", "South Africa", "Uganda", 
            "United Republic of Tanzania", "Zimbabwe")
 
