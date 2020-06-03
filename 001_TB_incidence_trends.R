@@ -159,3 +159,11 @@ do.call(grid.arrange, flat_plots)
 # Figure CWPITN (11 countries)
 peak_in_00s_plots <- lapply(peak_in_00s, plot_trend, r2_res = r2_res)
 do.call(grid.arrange, peak_in_00s_plots)
+
+# Figure TIFOC (8 countries)
+other_countries_plots <- lapply(other, plot_trend, r2_res = r2_res)
+do.call(grid.arrange, other_countries_plots)
+
+# Figure TIFOCNCI (8 countries)
+other_countries_plots_no_ci <- lapply(other, plot_trend_no_ci, r2_res = r2_res)
+do.call(grid.arrange, other_countries_plots_no_ci)
