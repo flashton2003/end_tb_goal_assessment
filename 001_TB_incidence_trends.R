@@ -72,7 +72,7 @@ plot_trend <- function(country_name, r2_res){
     geom_ribbon(data = one_country, aes(x = year, ymin=e_inc_100k_lo, ymax = e_inc_100k_hi), alpha = 0.3) +
     ggtitle(country_name) +
     xlab("Year") +
-    ylab("Incidence per 100k")
+    ylab("Incidence per 100k people")
   
   g 
 }
@@ -93,7 +93,7 @@ plot_trend_no_ci <- function(country_name, r2_res){
     annotate("text", label = paste("R-squared = ", r_sq), x = Inf, y = Inf, vjust = 1, hjust = 1) +
     ggtitle(country_name) +
     xlab("Year") +
-    ylab("Incidence per 100k")
+    ylab("Incidence per 100k people")
   
   g 
 }
