@@ -171,12 +171,10 @@ model_main <- function(country_name){
     geom_line(aes(x = year, y = predict_value), data = predicted_tb_inc, colour = "blue", size = 1.2) +
     geom_ribbon(data = df_country, aes(x = year, ymin=e_inc_100k_lo, ymax = e_inc_100k_hi), alpha = 0.3) +
     geom_ribbon(data = predicted_tb_inc, aes(x = year, ymin=proj_ci_lo, ymax = proj_ci_hi), fill = "blue", alpha = 0.3) +
-    xlab("Year") + ylab("Incidence \n per 100k people") + 
+    xlab("Year") + ylab("Incidence \nper 100k people") + 
     ggtitle(country_name) + 
     annotation_custom(tableGrob(extra_cases, cols = NULL, rows = NULL, theme = ttheme_minimal(base_size = 8)), xmin = 2022, ymin = (max_inc_100k - (0.2*range_inc))) + 
     theme(legend.position = "none", axis.text.y = element_text(size = 8), axis.title.y = element_text(size = 10))
-  
-  # previous y-axis was: ylab("Incidence of TB \n (per 100,000)")
   
   trend
   
