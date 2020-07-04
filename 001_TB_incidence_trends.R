@@ -20,7 +20,7 @@ get_r2_and_coef <- function(country_name){
   one_country <- master %>% filter(country == country_name)
   linear_model <- lm(e_inc_100k ~ year, data = one_country)
   
-  #print(summary(linear_model))
+  # print(summary(linear_model))
   ## this tryCatch function will run summary on the linear model
   ## and if summary returns a warning about the essentially perfect fit so summary
   ## unreliable, then r_sq is NaN
