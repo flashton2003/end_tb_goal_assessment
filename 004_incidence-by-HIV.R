@@ -31,7 +31,7 @@ tb_by_hiv <- function(country_name){
     geom_point(aes(y = e_inc_100k, col = "Total")) +
     geom_point(aes(y = e_inc_tbhiv_100k, col = "HIV infected")) +
     geom_point(aes(y = tb_hiv_neg, col = "HIV uninfected")) +
-    xlab("Year") + ylab("Incidence per \n 100k people") + ggtitle(country_name) + 
+    xlab("Year") + ylab("Incidence \nper 100k people") + ggtitle(country_name) + 
     # make legend horizontal in one row
     guides(colour = guide_legend(nrow = 1)) +
     # modify legend title
