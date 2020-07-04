@@ -15,7 +15,7 @@ predict_tb_inc <- function(year_start, fit){
   predicted_tb_inc <- data.frame(year = seq(year_start, 2035, 0.01), predict_value = 0)
   predicted_tb_inc$predict_value <- as.numeric(predict(fit, predicted_tb_inc, type = "response"))
   
-  # set 10 as minimum for TB incidence
+  # minimum incidence set to 10 per 100,000
   # replace all predicted values less than 10 with 10
   predicted_tb_inc[] <- lapply(predicted_tb_inc, function(x) ifelse(x<10, 10, x))
   return(predicted_tb_inc)
@@ -28,6 +28,9 @@ calc_target <- function(df_country, one_country){
   df_target <- data.frame("year" = c(2015, 2020, 2025, 2030, 2035), 
                           "num" = c(num_2015, 0.80*num_2015, 
                                     0.50*num_2015, 0.20*num_2015, 0.10*num_2015))
+  
+  # minimum incidence set to 10 per 100,000
+  df_target[] <- lapply(df_target, function(x) ifelse(x<10, 10, x))
   
   # nonlinear, polynomial regression for target decline
   fit.target <- lm(num ~ poly(year, 5, raw = TRUE), data = df_target)
@@ -43,13 +46,21 @@ get_one_country_df <- function(df_country){
   return(one_country)
 }
 
-add_ci_to_predicted <- function(predicted_tb_inc, df_country){
+calc_ci_ratios <- function(df_country){
   ## add new columns with the ratio of the estimate to the high and low bounds
-  df_country <- df_country %>% mutate(lb_ratio = e_inc_100k_lo / e_inc_100k) %>% mutate(hb_ratio = e_inc_100k_hi / e_inc_100k)
-  ## take averge of the last 5 years  
-  low_bound_ratio <- mean(tail(df_country$lb_ratio, 5))
-  high_bound_ratio <- mean(tail(df_country$hb_ratio, 5))
+  df_country_ci <- df_country %>% mutate(lb_ratio = e_inc_100k_lo / e_inc_100k) %>% mutate(hb_ratio = e_inc_100k_hi / e_inc_100k)
+  ## take averge of the last 5 years to obtain ratios 
+  lo <- mean(tail(df_country_ci$lb_ratio, 5))
+  hi <- mean(tail(df_country_ci$hb_ratio, 5))
+  ## df with low and high bound ratios
+  ci_ratios <- data.frame("lo" = lo, "hi" = hi)
+  return(ci_ratios)
+}
   
+add_ci_to_predicted <- function(predicted_tb_inc, df_country){
+  ci_ratios <- calc_ci_ratios(df_country)
+  low_bound_ratio <- as.numeric(ci_ratios$lo)
+  high_bound_ratio <- as.numeric(ci_ratios$hi)
   ## only want values for the period for which we rely on projections i.e. > 2018
   ## so, filter, add the projected CIs
   tmp_predicted_tb_inc <- predicted_tb_inc %>% filter(year > 2018)
@@ -61,13 +72,13 @@ add_ci_to_predicted <- function(predicted_tb_inc, df_country){
   print(tail(predicted_tb_inc))
   return(predicted_tb_inc)
 }
- 
+
 # project TB incidence through 2035
 model_main <- function(country_name){
   
   # throw warning if input country is not one of the 40 of interest
   throwWarning(country_name)
-
+  
   # the start year of each of the 40 countries specified in source function
   # as vector "years" and "names"
   
@@ -86,7 +97,7 @@ model_main <- function(country_name){
   ## @Jaeyoon - seem to predict to 2035 twice? once inside this function, and once for pred1
   ## do we need both of these, or can we only do this once?
   predicted_tb_inc <- predict_tb_inc(year_start, fit)
- 
+  
   ## add a new function which adds error bars on prediction
   ## it needs to take in 1) predicted_tb_inc 2) tb_inc and confidence intervals
   ## for the last 5 years, get the ratio of the estimate to hte high and hte low CI, take teh average of this over 5 years
@@ -160,7 +171,7 @@ model_main <- function(country_name){
     geom_line(aes(x = year, y = predict_value), data = predicted_tb_inc, colour = "blue", size = 1.2) +
     geom_ribbon(data = df_country, aes(x = year, ymin=e_inc_100k_lo, ymax = e_inc_100k_hi), alpha = 0.3) +
     geom_ribbon(data = predicted_tb_inc, aes(x = year, ymin=proj_ci_lo, ymax = proj_ci_hi), fill = "blue", alpha = 0.3) +
-    xlab("Year") + ylab("TB Incidence per 100k") + 
+    xlab("Year") + ylab("Incidence \n per 100k people") + 
     ggtitle(country_name) + 
     annotation_custom(tableGrob(extra_cases, cols = NULL, rows = NULL, theme = ttheme_minimal(base_size = 8)), xmin = 2022, ymin = (max_inc_100k - (0.2*range_inc))) + 
     theme(legend.position = "none", axis.text.y = element_text(size = 8), axis.title.y = element_text(size = 10))
@@ -173,6 +184,8 @@ model_main <- function(country_name){
 
 # test
 model_main("Cambodia")
+model_main("Republic of Korea")
+model_main("Nigeria")
 
 # process master
 master <- master %>% select(country, year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
@@ -180,16 +193,10 @@ master <- master %>% filter(country %in% all_countries)
 
 ## check -- should be 40 countries
 ## stopifnot will error if the expression is not true
-
 stopifnot(length(unique(master$country)) == 40)
 
 ## Model for all countries
-
-## tried to vectorise model function with mapply, but can't
-## get grid.arrange working on the output
-## got it working with lapply instead, but not ideal as the start dates
-## had to go inside the function.
-
 all_countries_projection <- lapply(all_countries, model_main)
 # generate figures in 2 pages (20 graphs/page) with the specified # rows and columbs
 all <- marrangeGrob(all_countries_projection, nrow = 4, ncol = 5)
+all
