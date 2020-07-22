@@ -40,7 +40,7 @@ read_in_pop <- function(pop_handle){
 predict_tb_inc <- function(year_start, fit){
   # insert predicted values to df
   predicted_tb_inc <- data.frame(year = seq(year_start, 2035, 0.01), predict_value = 0)
-  predicted_tb_inc$predict_value <- as.numeric(predict(fit, predicted_tb_inc, type = "response"))
+    predicted_tb_inc$predict_value <- as.numeric(predict(fit, predicted_tb_inc, type = "response"))
   
   # set 10 as minimum for TB incidence
   # replace all predicted values less than 10 with 10

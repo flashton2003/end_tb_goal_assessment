@@ -94,11 +94,11 @@ trVietnam <- prev_uncontrolled_hiv('Vietnam')
 trZambia <- prev_uncontrolled_hiv('Zambia')
 trZimbabwe <- prev_uncontrolled_hiv('Zimbabwe')
 
-
+trUganda
 ### generate the graphs!
 
 # bell curve
-grid.arrange(trAngola, trCongo, trKenya, trEswatini, trLesotho, trNamibia, trSierraLeone, trSouthAfrica)
+grid.arrange(trAngola, trCameroon, trCongo, trEswatini, trKenya, trLesotho, trMalawi, trNamibia, trSierraLeone, trSouthAfrica, trTanzania, trZimbabwe)
 
 # flat
 grid.arrange(trBangladesh, trNigeria, trPNG, trGB)
