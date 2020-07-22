@@ -2,57 +2,47 @@ library(reshape)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(cowplot)
 
-# store the HIV coverage data in dataframe arv (antiretroviral therapy)
-master.arv <- read.csv("hiv_arv_coverage.csv")
-# tidy format
-keycol <- 'year'
-valuecol <- 'hiv_coverage'
-gathercols <- colnames(master.arv)[2:20]
-arv <- gather_(master.arv, keycol, valuecol, gathercols)
-# get rid of the "X" (change X2001 to 2001)
-arv$year <- as.numeric(substr(arv$year, 2, 5))
+source("000_source-functions.R")
 
-# store the HIV prevalence data in dataframe prev
-master.prev <- read.csv("hiv_prev_ALL.csv")
-# tidy format
-keycol <- 'year'
-valuecol <- 'hiv_prevalence'
-gathercols <- colnames(master.prev)[2:20]
-prev <- gather_(master.prev, keycol, valuecol, gathercols)
-# get rid of the "X" (change X2001 to 2001)
-prev$year <- as.numeric(substr(prev$year, 2, 5))
+# arv: HIV antiretroviral coverage (in %) by country from 2000 to 2018
+# prev: HIV prevalence (in %) by country from 2000 to 2018
 
 # calculating prevalence of uncontrolled HIV (%, unc_hiv) per year
 
 prev_uncontrolled_hiv <- function(country_name){
+  
+  # throw warning if country_name not in master
+  throwWarning(country_name)
 
-country_arv <- arv %>% filter(country == country_name)
-hiv_prevalence <- (prev %>% filter(country == country_name))$hiv_prevalence
-# cbind is column bind, the data frame gets fatter, binds with row name as key, needs the same dimensions and row names
-# rbind is row bind, the data frame gets taller, binds with col name as key, needs same dimensions
-arv.prev <- cbind(country_arv, hiv_prevalence)
-
-arv.prev <- arv.prev %>% mutate(unc_hiv = ((100 - hiv_coverage)/100) * hiv_prevalence)
-
-# code that will show the legend:
-    # p <- ggplot(arv.prev, aes(year, y = value, color = variable)) +
-      # geom_point(aes(y = hiv_prevalence, col = "HIV Prevalence (%)")) +
-      # geom_point(aes(y = unc_hiv, col = "Uncontrolled HIV (%)")) +
-      # xlab("Year") + ylab("% of Total Population") + ggtitle(country_name)
-
-# will not display legend:
-p <- ggplot(arv.prev, aes(year, y = value, color = variable)) +
-geom_point(aes(y = hiv_prevalence, col = "HIV Prevalence (%)"), show.legend = FALSE) +
-geom_point(aes(y = unc_hiv, col = "Uncontrolled HIV (%)"), show.legend = FALSE) +
-xlab("Year") + ylab("% of Total Population") + ggtitle(country_name)
-
-p + theme(legend.position = "none")
-
-p
+  country_arv <- arv %>% filter(country == country_name)
+  hiv_prevalence <- (prev %>% filter(country == country_name))$hiv_prevalence
+  
+  # cbind is column bind, the data frame gets fatter, binds with row name as key, needs the same dimensions and row names
+  # rbind is row bind, the data frame gets taller, binds with col name as key, needs same dimensions
+  arv.prev <- cbind(country_arv, hiv_prevalence)
+  
+  arv.prev <- arv.prev %>% mutate(unc_hiv = ((100 - hiv_coverage)/100) * hiv_prevalence)
+  
+  # shorten country name to fit in graph/use vernacular names
+  country_name <- shorten_country_name(country_name)
+  
+  # display graph with the legend:
+  p <- ggplot(arv.prev, aes(year, y = value, colour = variable)) +
+      geom_point(aes(y = hiv_prevalence, col = "Total")) +
+      geom_point(aes(y = unc_hiv, col = "Uncontrolled")) +
+      xlab("Year") + ylab("% Population") + ggtitle(country_name) +
+      # make legend horizontal in one row
+      guides(colour = guide_legend(nrow = 1)) +
+      # modify legend title
+      labs(colour = "HIV Prevalence (%)")
+  
+  p
 
 }
 
+<<<<<<< HEAD
 trAngola <- prev_uncontrolled_hiv('Angola')
 trBangladesh <- prev_uncontrolled_hiv('Bangladesh')
 trBotswana <- prev_uncontrolled_hiv('Botswana')
@@ -102,12 +92,22 @@ grid.arrange(trAngola, trCameroon, trCongo, trEswatini, trKenya, trLesotho, trMa
 
 # flat
 grid.arrange(trBangladesh, trNigeria, trPNG, trGB)
+=======
+# without legend
+prev_uncontrolled_hiv_no_legend <- function(country_name){
+  prev_uncontrolled_hiv(country_name) + theme(legend.position = "none")
+}
+>>>>>>> b481efc23a98d28fd4f0bf0484a5d19c7e9f5e24
 
-# increase
-grid.arrange(trLiberia, trMozambique)
+# obtain common legend
+trAngola <- prev_uncontrolled_hiv("Angola")
+legend <- get_legend(trAngola)
 
-# other
-grid.arrange(trBrazil, trCentral_African_Republic, trDRC, trPakistan, trPhilippines, trTanzania, trMalawi, trUganda)
+# generate graphs for the 13 countries of interest using lapply
+g <- lapply(hiv_13, prev_uncontrolled_hiv_no_legend)
+g13 <- do.call(grid.arrange, g)
 
-# normal linear decrease
-grid.arrange(trBotswana, trCambodia, trCameroon, trChad, trEthiopia, trGhana, trIndonesia, trLaos, trMyanmar, trThailand, trVietnam, trZambia, trZimbabwe)
+# now add the common legend to bottom
+g_legend <- plot_grid(g13, legend, rel_heights = c(1, .1), ncol = 1, 
+                   align = 'v', axis = 'c')
+g_legend
