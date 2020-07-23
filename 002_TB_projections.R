@@ -24,7 +24,6 @@ predict_tb_inc <- function(year_start, fit){
 calc_target <- function(df_country, one_country){
   # model the target decline with End TB goal with benchmarks to 2035
   num_2015 <- as.integer(df_country$e_inc_100k[one_country$year == 2015])
-  
   df_target <- data.frame("year" = c(2015, 2020, 2025, 2030, 2035), 
                           "num" = c(num_2015, 0.80*num_2015, 
                                     0.50*num_2015, 0.20*num_2015, 0.10*num_2015))
@@ -69,7 +68,7 @@ add_ci_to_predicted <- function(predicted_tb_inc, df_country){
   ## and then combine back with predicted_tb_inc using a join
   predicted_tb_inc <- left_join(predicted_tb_inc, tmp_predicted_tb_inc)
   #print(df_country)
-  print(tail(predicted_tb_inc))
+  #print(tail(predicted_tb_inc))
   return(predicted_tb_inc)
 }
 
@@ -103,13 +102,13 @@ model_main <- function(country_name){
   ## for the last 5 years, get the ratio of the estimate to hte high and hte low CI, take teh average of this over 5 years
   ## then, make new columns, predicting the bounds based on the average.
   predicted_tb_inc <- add_ci_to_predicted(predicted_tb_inc, df_country)
-  
   ## get df for one country
   one_country <- get_one_country_df(df_country)
   
   ## calculate the targets
   target_output  <- calc_target(df_country, one_country)
   df_target <- target_output$df_target
+  print(country_name)
   print(df_target)
   fit.target <- target_output$fit.target
   
@@ -171,10 +170,11 @@ model_main <- function(country_name){
     geom_line(aes(x = year, y = predict_value), data = predicted_tb_inc, colour = "blue", size = 1.2) +
     geom_ribbon(data = df_country, aes(x = year, ymin=e_inc_100k_lo, ymax = e_inc_100k_hi), alpha = 0.3) +
     geom_ribbon(data = predicted_tb_inc, aes(x = year, ymin=proj_ci_lo, ymax = proj_ci_hi), fill = "blue", alpha = 0.3) +
-    xlab("Year") + ylab("Incidence \nper 100k people") + 
+    #xlab("Year") + ylab("Incidence \nper 100k people") + 
+    theme(axis.title = element_blank()) +
     ggtitle(country_name) + 
-    annotation_custom(tableGrob(extra_cases, cols = NULL, rows = NULL, theme = ttheme_minimal(base_size = 8)), xmin = 2022, ymin = (max_inc_100k - (0.2*range_inc))) + 
-    theme(legend.position = "none", axis.text.y = element_text(size = 8), axis.title.y = element_text(size = 10))
+    annotation_custom(tableGrob(extra_cases, cols = NULL, rows = NULL, theme = ttheme_minimal(base_size = 8)), xmin = 2022, ymin = (max_inc_100k - (0.2*range_inc)))
+    #theme(legend.position = "none", axis.text.y = element_text(size = 8), axis.title.y = element_text(size = 10))
   
   trend
   
@@ -193,8 +193,28 @@ master <- master %>% filter(country %in% all_countries)
 ## stopifnot will error if the expression is not true
 stopifnot(length(unique(master$country)) == 40)
 
+## axis lables which are common to both
+y.grob <- textGrob("Incidence per 100k people", gp = gpar(col="black", fontsize=15), rot = 90)
+x.grob <- textGrob("Year", gp = gpar(fontface="bold", col="black", fontsize=15))
+
+## model for hitting target
+
+hit_target_countries_projection <- lapply(projected_to_meet_target, model_main)
+hit_plots <- do.call(grid.arrange, hit_target_countries_projection)
+#hit <- marrangeGrob(hit_target_countries_projection, nrow = 4, ncol = 5)
+plot <- plot_grid(hit_plots, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
+
+## model for missing
+
+miss_target_countries_projection <- lapply(projected_to_miss_target, model_main)
+miss_plots <- do.call(grid.arrange, miss_target_countries_projection)
+#hit <- marrangeGrob(hit_target_countries_projection, nrow = 4, ncol = 5)
+plot <- plot_grid(miss_plots, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
+
+# generate figures in 2 pages (20 graphs/page) with the specified # rows and columbs
 ## Model for all countries
 all_countries_projection <- lapply(all_countries, model_main)
-# generate figures in 2 pages (20 graphs/page) with the specified # rows and columbs
 all <- marrangeGrob(all_countries_projection, nrow = 4, ncol = 5)
 all

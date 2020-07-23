@@ -71,9 +71,9 @@ plot_trend <- function(country_name, r2_res){
     annotate("text", label = paste("R-squared = ", r_sq), x = Inf, y = Inf, vjust = 1, hjust = 1) +
     geom_ribbon(data = one_country, aes(x = year, ymin=e_inc_100k_lo, ymax = e_inc_100k_hi), alpha = 0.3) +
     ggtitle(country_name) +
-    xlab("Year") +
-    ylab("Incidence \nper 100k people")
-  
+    #xlab("Year") + ylab("Incidence \nper 100k people")
+    theme(axis.title = element_blank()) +
+    ylim(0, NA)
   g 
 }
 
@@ -92,8 +92,9 @@ plot_trend_no_ci <- function(country_name, r2_res){
     geom_point() +
     annotate("text", label = paste("R-squared = ", r_sq), x = Inf, y = Inf, vjust = 1, hjust = 1) +
     ggtitle(country_name) +
-    xlab("Year") +
-    ylab("Incidence \nper 100k people")
+    #xlab("Year") + ylab("Incidence \nper 100k people")
+    theme(axis.title = element_blank()) +
+    ylim(0, NA)
   
   g 
 }
@@ -134,36 +135,57 @@ eg <- c("Angola","Brazil")
 lp_eg <- lapply(eg, plot_trend, r2_res = r2_res)
 do.call(grid.arrange, lp_eg)
 
+## common axis titles
+y.grob <- textGrob("Incidence per 100k people", gp = gpar(col="black", fontsize=15), rot = 90)
+x.grob <- textGrob("Year", gp = gpar(fontface="bold", col="black", fontsize=15))
+
 ## generate plots for countries which will take analysis forward for
 hq_countries <- c("Angola","Brazil","Botswana","Cambodia","Cameroon","Chad","China", "Congo", "Democratic Republic of the Congo", "Eswatini","Ethiopia","Ghana", "Guinea-Bissau", "India","Indonesia","Kenya", "Laos","Lesotho","Liberia","Malawi", "Mozambique","Myanmar","Namibia", "Pakistan", "Philippines", "Republic of Korea", "Russian Federation", "Sierra Leone", "South Africa","Thailand", "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
 
 recently_linear <- c('Republic of Korea', 'Congo', 'Russian Federation', 'South Africa', 'Myanmar', 'Kenya', 'United Republic of Tanzania', 'Eswatini', 'Lesotho', 'Namibia', 'Malawi')
 
 hq_plots <- lapply(recently_linear, plot_trend, r2_res = r2_res)
-do.call(grid.arrange, hq_plots)
+hq_plots_g <- do.call(grid.arrange, hq_plots)
+plot <- plot_grid(hq_plots_g, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
 
 ###### generating figures
 
 # Figure CWLD (14 countries)
 linear_decrease_plots <- lapply(linear_decrease, plot_trend, r2_res = r2_res)
-do.call(grid.arrange, linear_decrease_plots)
+linear_decrease_plots_g <- do.call(grid.arrange, linear_decrease_plots)
+plot <- plot_grid(linear_decrease_plots_g, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
+
 
 # Figure CWII (4 countries)
+
 increasing_plots <- lapply(increasing, plot_trend, r2_res = r2_res)
-do.call(grid.arrange, increasing_plots)
+increasing_plots_g <- do.call(grid.arrange, increasing_plots)
+plot <- plot_grid(increasing_plots_g, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
 
 # Figure CWFI (5 countries)
 flat_plots <- lapply(flat, plot_trend, r2_res = r2_res)
-do.call(grid.arrange, flat_plots)
+flat_plots_g <- do.call(grid.arrange, flat_plots)
+plot <- plot_grid(flat_plots_g, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
 
 # Figure CWPITN (11 countries)
 peak_in_00s_plots <- lapply(peak_in_00s, plot_trend, r2_res = r2_res)
-do.call(grid.arrange, peak_in_00s_plots)
+peak_in_00s_plots_g <- do.call(grid.arrange, peak_in_00s_plots)
+plot <- plot_grid(peak_in_00s_plots_g, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
 
-others <- c('Philippines', 'Republic of Korea', 'Democratic Republic of the Congo', 'Pakistan', 'Russian Federation', 'Uganda', 'Myanmar', 'Brazil')
 # Figure TIFOC (8 countries)
-other_plots <- lapply(others, plot_trend, r2_res = r2_res)
-do.call(grid.arrange, other_plots)
+other_plots <- lapply(other, plot_trend, r2_res = r2_res)
+other_plots_g <- do.call(grid.arrange, other_plots)
+plot <- plot_grid(other_plots_g, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
+
+
 # Figure TIFOCNCI (8 countries)
-other_plots_no_ci <- lapply(others, plot_trend_no_ci, r2_res = r2_res)
-do.call(grid.arrange, other_plots_no_ci)
+other_plots_no_ci <- lapply(other, plot_trend_no_ci, r2_res = r2_res)
+other_plots_no_ci_g <- do.call(grid.arrange, other_plots_no_ci)
+plot <- plot_grid(other_plots_no_ci_g, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))

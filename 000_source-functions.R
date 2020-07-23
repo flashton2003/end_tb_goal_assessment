@@ -76,8 +76,16 @@ flat <- c("Bangladesh", "Central African Republic", "Nigeria", "Democratic Peopl
 # 11 peak in the 2000s (Figure CWPITN from 001)
 peak_in_00s <- c('Angola', 'Cameroon', 'Congo', 'Eswatini', 'Kenya', 'Lesotho', 'Malawi', 'Namibia', 'Sierra Leone', 'South Africa', 'United Republic of Tanzania', 'Zimbabwe')
 # 8 "other" countries (Figures TIFOC and TIFOCNCI from 001)
-other <- c("Philippines", "Republic of Korea", "Democratic Republic of the Congo", 
-           "Pakistan", "Russian Federation", "Uganda", "Myanmar", "Brazil")
+other <- c("Brazil", "Democratic Republic of the Congo", "Myanmar", "Pakistan", "Philippines", "Republic of Korea", "Russian Federation", "Uganda")
+
+### countries grouped by whether or not they are projected to meet targets
+
+# will meet
+projected_to_meet_target <- c("Botswana", "Eswatini", "Ethiopia", "Kenya", "Laos", "Lesotho", "Myanmar", "Namibia", "Republic of Korea", "Russian Federation", "South Africa", "United Republic of Tanzania", "Zambia", "Zimbabwe")
+
+# wont meet
+
+projected_to_miss_target <- c("Angola", "Bangladesh", "Brazil", "Cambodia", "Cameroon", "Central African Republic", "Chad", "China", "Congo", "Democratic People's Republic of Korea", "Democratic Republic of the Congo", "Ghana", "Guinea-Bissau", "India", "Indonesia", "Liberia", "Malawi", "Mozambique", "Nigeria", "Pakistan", "Papua New Guinea", "Philippines", "Sierra Leone", "Thailand", "Uganda", "Vietnam")
 
 ### throw warning if input country is not in the 40 countries of interest 
 throwWarning <- function(country_name)
