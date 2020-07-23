@@ -58,9 +58,7 @@ all_countries <- c("Angola","Bangladesh","Brazil","Botswana","Cambodia","Cameroo
                    "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
 
 ### hiv_13 is a list of 13 countries analyzed for HIV (Figures HPAUH and )
-hiv_13 <- c("Angola", "Cameroon", "Congo", "Eswatini", "Kenya", "Lesotho", "Malawi", 
-           "Namibia", "Sierra Leone", "South Africa", "Uganda", 
-           "United Republic of Tanzania", "Zimbabwe")
+hiv_13 <- c("Angola", "Botswana", "Cameroon", "Congo", "Eswatini", "Kenya", "Lesotho", "Malawi", "Namibia", "Sierra Leone", "South Africa", "Uganda", "United Republic of Tanzania", "Zambia", "Zimbabwe")
 
 ### years used to project TB in 002_TB_projections
 # each of the 40 countries has a corresponding year
@@ -76,7 +74,7 @@ increasing <- c("Angola", "Guinea-Bissau", "Liberia", "Mozambique")
 # 5 flat (Figure CWFI from 001)
 flat <- c("Bangladesh", "Central African Republic", "Nigeria", "Democratic People's Republic of Korea", "Papua New Guinea")
 # 11 peak in the 2000s (Figure CWPITN from 001)
-peak_in_00s <- c('Angola', 'Cameroon', 'Congo', 'Eswatini', 'Kenya', 'Lesotho', 'Malawi', 'Namibia', 'South Africa', 'United Republic of Tanzania', 'Zimbabwe')
+peak_in_00s <- c('Angola', 'Cameroon', 'Congo', 'Eswatini', 'Kenya', 'Lesotho', 'Malawi', 'Namibia', 'Sierra Leone', 'South Africa', 'United Republic of Tanzania', 'Zimbabwe')
 # 8 "other" countries (Figures TIFOC and TIFOCNCI from 001)
 other <- c("Philippines", "Republic of Korea", "Democratic Republic of the Congo", 
            "Pakistan", "Russian Federation", "Uganda", "Myanmar", "Brazil")
