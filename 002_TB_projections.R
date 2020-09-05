@@ -77,7 +77,7 @@ model_main <- function(country_name){
   # the start year of each of the 40 countries specified in source function
   # as vector "years" and "names"
   
-  # select country, year, TB incidence, population
+  # get data for just that country: year, TB incidence, low bound, high bound
   df_country <- master %>% filter(country == country_name) %>% 
     select(year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
   year_start <- years[country_name]
@@ -85,7 +85,7 @@ model_main <- function(country_name){
   # row begins at year_start
   row <- as.numeric(rownames(df_country[df_country$year == year_start,]))
   
-  # fit model from year_start to 2017
+  # fit model from year_start to 2018
   fit <- lm(e_inc_100k ~ year, data = df_country[row:nrow(df_country),])
   
   # predict tb inc to 2035 based on lm
@@ -93,7 +93,7 @@ model_main <- function(country_name){
   
   ## add a new function which adds error bars on prediction
   ## it needs to take in 1) predicted_tb_inc 2) tb_inc and confidence intervals
-  ## for the last 5 years, get the ratio of the estimate to hte high and hte low CI, take teh average of this over 5 years
+  ## for the last 5 years, get the ratio of the estimate to the high and the low CI, take the average of this over 5 years
   ## then, make new columns, predicting the bounds based on the average.
   predicted_tb_inc <- add_ci_to_predicted(predicted_tb_inc, df_country)
   ## get df for one country

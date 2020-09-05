@@ -1,4 +1,10 @@
+# obtain TB incidence (per 100k) and TB number of cases by HIV status
+
+# call source file
 source("000_source-functions.R")
+
+######################### Data Processing #########################
+######### WHO incidence data + WorldBank population data ##########
 
 # select country, total TB incidence, and HIV+ TB incidence by year
 master <- master %>% select(country, year, e_inc_100k, e_inc_tbhiv_100k) 
@@ -8,33 +14,30 @@ master <- master %>% dplyr::rename(total_inc = e_inc_100k, hiv_inc = e_inc_tbhiv
 # master.hiv with only the 15 countries of interest
 master.hiv <- master %>% filter(country %in% hiv_15)
 
+# population data to be used for calculating number of cases
+# pop.hiv with only the 15 countries of interest
+pop.hiv <- pop %>% filter(country %in% hiv_15)
+
 ## check that there are 15 countries
 ## stopifnot will error if the expression is not true
 stopifnot(length(unique(master.hiv$country)) == 15)
+stopifnot(length(unique(pop.hiv$country)) == 15)
 
+
+######################### TB INCIDENCE #########################
+################ columns A-D in toy file from PA #################
 
 # display df for an individual country only through 2035
 get_one_country_df <- function(country_name){
   
-  df_onecountry <- master %>% filter(country == country_name) %>% select(year, total_inc, hiv_inc)
+  df_onecountry <- master.hiv %>% filter(country == country_name) %>% select(year, total_inc, hiv_inc)
   
   # add column for HIV negative (nohiv) TB incidence
   df_onecountry <- df_onecountry %>% mutate(nohiv_inc = total_inc - hiv_inc)
   
-  # extend overall, HIV+, HIV- TB incidence to 2035
-  # to_2035 <- data.frame(year = 2019:2035, 
-  #                       total_inc = replicate(17, "NA"), 
-  #                       hiv_inc = replicate(17, "NA"),
-  #                       nohiv_inc = replicate(17, "NA"))
-  # one_country <- rbind(df_onecountry, to_2035)
-  
-  one_country <- df_onecountry
-  
   # returns df with 4 columns (year, total TB, HIV+ TB, HIV- TB) and 36 rows (2000-2035)
-  return(one_country)
+  return(df_onecountry)
 }
-
-## TEST: get_one_country_df("Angola")
 
 # display tb incidence from 2000 to 2035 by hiv status
 # from 2000 to 2018 is WHO data; from 2019 to 2035 is predicted data
@@ -64,7 +67,7 @@ predict_inc <- function(country_name){
   fit_nohiv <- lm(nohiv_inc ~ year, data = df_actual[row:end,])
   
   
-  # make empty df with same columns from years 2019 to 2035
+  # create empty df with same columns from years 2019 to 2035
   df_preds <- data.frame(year = 2019:2035, total_inc = 0, hiv_inc = 0, nohiv_inc = 0)
   
   # populate df_preds from 2019 to 2035
@@ -77,20 +80,10 @@ predict_inc <- function(country_name){
   df_preds[] <- lapply(df_preds, function(x) ifelse(x<10, 10, x))
   
   
-  # bind df_country (2000-2018) together with df_preds (2019-2035)
-  df_country <- rbind(df_actual, df_preds)
+  # bind df_actual (2000-2018) together with df_preds (2019-2035)
+  df_incidence <- rbind(df_actual, df_preds)
   
-  
-  # insert predicted values from 2019 to 2035 to df_pred_inc
-  # df_pred_inc <- data.frame(year = 2019:2035, predict_value = 0)
-  # predicted_tb_inc$predict_value <- as.numeric(predict(fit, predicted_tb_inc, type = "response"))
-  
-  # minimum incidence set to 10 per 100,000
-  # replace all predicted values less than 10 with 10
-  # df[] <- lapply(df, function(x) ifelse(x<10, 10, x))
-  # predicted_tb_inc[] <- lapply(predicted_tb_inc, function(x) ifelse(x<10, 10, x))
-  
-  return(df_country)
+  return(df_incidence)
 }
 
 ### validate to make sure predict_by_hiv numbers match with 002 YES!
@@ -101,16 +94,85 @@ predict_inc <- function(country_name){
   ### malawi[nrow(malawi), ] # returns 48, consistent with Table 2
 
 
-  # 2020-09-04 next steps:
-  # using combination of rbind and cbind get columns A-D in toy example table
-  # return this. then feed in as input to another function that uses POPULATION data 
-  # to then get ACTUAL NUMBER OF CASES, columns E-G (will have to mutate to add these columns)
-  # this NUMBER OF CASES function should return final table
+######################### TB NUMBER OF CASES #########################
+################### columns E-G in toy file from PA ####################
 
-### validate to make sure predict_by_hiv numbers match with 002
-  ### angola <- predict_by_hiv("Angola")
-  ### angola[nrow(angola), ] # returns 284, consistent with Table 2
 
-  ### malawi <- predict_by_hiv("Malawi")
-  ### malawi[nrow(malawi), ] # returns 48, consistent with Table 2
+# now that we know incidence of TB by HIV status 2000-2035, 
+# we want the actual NUMBER OF TB CASES by HIV status 2000-2035.
+# to do this, use population data
+predict_numb <- function(country_name){
+  
+  # get incidence predictions of that country from predict_inc, 2000-2035
+  inc_country <- predict_inc(country_name)
+  
+  # get population of that country, 2000-2035 (worldbank data)
+  pop_country <- pop.hiv %>% filter(country == country_name) %>% select(year, population)
+  
+  # create new empty df 2000-2035
+  df_number <- data.frame(year = 2000:2035, total_numb = 0, hiv_numb = 0, nohiv_numb = 0)
+  
+  df_number <- df_number %>%
+    mutate(
+      
+      total_numb = as.numeric(inc_country$total_inc/100000)*as.numeric(pop_country$population),
+      hiv_numb = as.numeric(inc_country$hiv_inc/100000)*as.numeric(pop_country$population),
+      nohiv_numb = as.numeric(inc_country$nohiv_inc/100000)*as.numeric(pop_country$population)
+      
+  ) %>% 
+    # don't want two columns for "year" in final, so select all but year
+    select(total_numb, hiv_numb, nohiv_numb)
+  
+  # tried using helper function instead (below)
+  # df_number <- df_number %>% 
+  #   mutate(
+  #     total_numb = get_numb_from_inc(inc_country, pop_country, total_inc)
+  #   )
 
+  return(df_number)
+  
+}
+
+# tried doing helper function to embed into predict_numb but not working
+# get_numb_from_inc <- function(inc_df, pop_df, inc_hiv_status){
+#   numb_hiv_status = as.numeric(inc_df$inc_hiv_status/100000)*as.numeric(pop_df$population)
+#   return(numb_hiv_status)
+# }
+  
+
+################### COMBINE INCIDENCE AND NUMBER, 2000-2035 ###################
+####################### ALL COLUMNS in toy file from PA #######################
+
+
+# now, combine incidence and number into one table
+# this generates ONE table that looks like the toy example sent by PA
+table_main <- function(country_name){
+  inc <- predict_inc(country_name)
+  numb <- predict_numb(country_name)
+  country_df <- cbind(inc, numb)
+  return(country_df)
+}
+
+# depending on which countries we decide to do this for:
+# below code applies table_main to all 15 countries
+# (may need to do one-by-one to keep track of which country is associated with which)
+# the order is in 000, and also below:
+# hiv_15 <- c("Angola", 
+#             "Botswana", 
+#             "Cameroon", 
+#             "Congo", 
+#             "Eswatini", 
+#             "Kenya", 
+#             "Lesotho", 
+#             "Malawi", 
+#             "Namibia", 
+#             "Sierra Leone", 
+#             "South Africa", 
+#             "Uganda", 
+#             "United Republic of Tanzania", 
+#             "Zambia", 
+#             "Zimbabwe")
+lapply(hiv_15, table_main)
+
+# just for Angola
+table_main("Angola")
