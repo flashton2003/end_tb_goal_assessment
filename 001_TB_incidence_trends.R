@@ -140,13 +140,15 @@ y.grob <- textGrob("Incidence per 100k people", gp = gpar(col="black", fontsize=
 x.grob <- textGrob("Year", gp = gpar(fontface="bold", col="black", fontsize=15))
 
 ## generate plots for countries which will take analysis forward for
-hq_countries <- c("Angola","Brazil","Botswana","Cambodia","Cameroon","Chad","China", "Congo", "Democratic Republic of the Congo", "Eswatini","Ethiopia","Ghana", "Guinea-Bissau", "India","Indonesia","Kenya", "Laos","Lesotho","Liberia","Malawi", "Mozambique","Myanmar","Namibia", "Pakistan", "Philippines", "Republic of Korea", "Russian Federation", "Sierra Leone", "South Africa","Thailand", "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
+#hq_countries <- c("Angola","Brazil","Botswana","Cambodia","Cameroon","Chad","China", "Congo", "Democratic Republic of the Congo", "Eswatini","Ethiopia","Ghana", "Guinea-Bissau", "India","Indonesia","Kenya", "Laos","Lesotho","Liberia","Malawi", "Mozambique","Myanmar","Namibia", "Pakistan", "Philippines", "Republic of Korea", "Russian Federation", "Sierra Leone", "South Africa","Thailand", "Uganda","United Republic of Tanzania","Vietnam", "Zambia","Zimbabwe")
 
-recently_linear <- c('Republic of Korea', 'Congo', 'Russian Federation', 'South Africa', 'Myanmar', 'Kenya', 'United Republic of Tanzania', 'Eswatini', 'Lesotho', 'Namibia', 'Malawi')
+#recently_linear <- c('Republic of Korea', 'Congo', 'Russian Federation', 'South Africa', 'Myanmar', 'Kenya', 'United Republic of Tanzania', 'Eswatini', 'Lesotho', 'Namibia', 'Malawi')
 
-hq_plots <- lapply(recently_linear, plot_trend, r2_res = r2_res)
-hq_plots_g <- do.call(grid.arrange, hq_plots)
-plot <- plot_grid(hq_plots_g, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+## all 
+
+all_plots <- lapply(all_countries, plot_trend, r2_res = r2_res)
+all_plots_g <- do.call(grid.arrange, all_plots)
+plot <- plot_grid(all_plots_g, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
 grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
 
 ###### generating figures
