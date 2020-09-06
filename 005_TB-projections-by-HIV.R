@@ -150,6 +150,7 @@ table_main <- function(country_name){
   inc <- predict_inc(country_name)
   numb <- predict_numb(country_name)
   country_df <- cbind(inc, numb)
+  country_df <- country_df %>% add_column(country_name = country_name, .before = 0)
   return(country_df)
 }
 
