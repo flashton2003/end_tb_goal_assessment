@@ -1,9 +1,3 @@
-library(reshape)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(cowplot)
-
 source("000_source-functions.R")
 
 # arv: HIV antiretroviral coverage (in %) by country from 2000 to 2018
@@ -19,8 +13,6 @@ prev_uncontrolled_hiv <- function(country_name){
   country_arv <- arv %>% filter(country == country_name)
   hiv_prevalence <- (prev %>% filter(country == country_name))$hiv_prevalence
   
-  # cbind is column bind, the data frame gets fatter, binds with row name as key, needs the same dimensions and row names
-  # rbind is row bind, the data frame gets taller, binds with col name as key, needs same dimensions
   arv.prev <- cbind(country_arv, hiv_prevalence)
   
   arv.prev <- arv.prev %>% mutate(unc_hiv = ((100 - hiv_coverage)/100) * hiv_prevalence)
@@ -45,31 +37,31 @@ prev_uncontrolled_hiv <- function(country_name){
 
 }
 
-
 # without legend
 prev_uncontrolled_hiv_no_legend <- function(country_name){
   prev_uncontrolled_hiv(country_name) + theme(legend.position = "none")
 }
 
-# obtain common legend
+# obtain legend
 trAngola <- prev_uncontrolled_hiv("Angola")
 legend <- get_legend(trAngola)
 
-y.grob <- textGrob("HIV prevalence - percent of adult population", gp = gpar(col="black", fontsize=15), rot = 90)
+# axes labels
+y.grob <- textGrob("HIV prevalence (% adult population)", gp = gpar(col="black", fontsize=15), rot = 90)
 x.grob <- textGrob("Year", gp = gpar(fontface="bold", col="black", fontsize=15))
 
-# generate graphs for the 13 countries of interest using lapply
-hiv_plots <- lapply(hiv_13, prev_uncontrolled_hiv_no_legend)
+# generate graphs for the 15 countries of interest using lapply
+hiv_plots <- lapply(hiv_15, prev_uncontrolled_hiv_no_legend)
 hiv_plots_g <- do.call(grid.arrange, hiv_plots)
 plot <- plot_grid(hiv_plots_g, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+
+# create tiff file supplementary figure 3
+tiff(filename = "S3_hiv_prev.tiff", width = 6.75, height = 8, units = "in", res = 300)
 grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
+dev.off()
 
-
-
-
-# now add the common legend to bottom
+# generate the common legend
 grid.arrange(legend)
 g_legend <- plot_grid(legend, rel_heights = c(1, .1), ncol = 1, 
                    align = 'v', axis = 'c')
 g_legend
-

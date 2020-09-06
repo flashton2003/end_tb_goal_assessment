@@ -1,15 +1,9 @@
-library(tidyverse)
-library(gapminder)
-library(dplyr)
-library(ggfortify)
-library(ggplot2)
-library(gridExtra)
-
 source("000_source-functions.R")
 
 # in addition to country name, also input year_start
 # year_start is the year in which incidence started decreasing linearly
 
+# predict tb incidence projecting to 2035
 predict_tb_inc <- function(year_start, fit){
   # insert predicted values to df
   predicted_tb_inc <- data.frame(year = seq(year_start, 2035, 0.01), predict_value = 0)
@@ -21,9 +15,12 @@ predict_tb_inc <- function(year_start, fit){
   return(predicted_tb_inc)
 }
 
+# model the target decline with End TB goal with benchmarks to 2035
 calc_target <- function(df_country, one_country){
-  # model the target decline with End TB goal with benchmarks to 2035
+  # extract reported incidence value for 2015 as the baseline
   num_2015 <- as.integer(df_country$e_inc_100k[one_country$year == 2015])
+  # calculate benchmark targets based on the 2015 value through 2035
+  # according to the WHO End TB goals
   df_target <- data.frame("year" = c(2015, 2020, 2025, 2030, 2035), 
                           "num" = c(num_2015, 0.80*num_2015, 
                                     0.50*num_2015, 0.20*num_2015, 0.10*num_2015))
@@ -39,7 +36,7 @@ calc_target <- function(df_country, one_country){
 
 get_one_country_df <- function(df_country){
   to_2035 <- data.frame(year=2019:2035, e_inc_100k= replicate(17, "NA"))
-  # need to do this as doesn't like the rbind with e_inc_100k_lo, e_inc_100k_hi
+  # need to do this as rbind with e_inc_100k_lo, e_inc_100k_hi does not work
   tmp_df_country <- df_country %>% select(year, e_inc_100k)
   one_country <- rbind(tmp_df_country, to_2035)
   return(one_country)
@@ -65,10 +62,9 @@ add_ci_to_predicted <- function(predicted_tb_inc, df_country){
   tmp_predicted_tb_inc <- predicted_tb_inc %>% filter(year > 2018)
   tmp_predicted_tb_inc <- tmp_predicted_tb_inc %>% mutate(proj_ci_lo = predict_value * low_bound_ratio) %>% mutate(proj_ci_hi = predict_value * high_bound_ratio)
   
-  ## and then combine back with predicted_tb_inc using a join
+  ## then combine back with predicted_tb_inc using a join
   predicted_tb_inc <- left_join(predicted_tb_inc, tmp_predicted_tb_inc)
-  #print(df_country)
-  #print(tail(predicted_tb_inc))
+
   return(predicted_tb_inc)
 }
 
@@ -81,7 +77,7 @@ model_main <- function(country_name){
   # the start year of each of the 40 countries specified in source function
   # as vector "years" and "names"
   
-  # select country, year, TB incidence, population
+  # get data for just that country: year, TB incidence, low bound, high bound
   df_country <- master %>% filter(country == country_name) %>% 
     select(year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
   year_start <- years[country_name]
@@ -89,17 +85,15 @@ model_main <- function(country_name){
   # row begins at year_start
   row <- as.numeric(rownames(df_country[df_country$year == year_start,]))
   
-  # fit model from year_start to 2017
+  # fit model from year_start to 2018
   fit <- lm(e_inc_100k ~ year, data = df_country[row:nrow(df_country),])
   
   # predict tb inc to 2035 based on lm
-  ## @Jaeyoon - seem to predict to 2035 twice? once inside this function, and once for pred1
-  ## do we need both of these, or can we only do this once?
   predicted_tb_inc <- predict_tb_inc(year_start, fit)
   
   ## add a new function which adds error bars on prediction
   ## it needs to take in 1) predicted_tb_inc 2) tb_inc and confidence intervals
-  ## for the last 5 years, get the ratio of the estimate to hte high and hte low CI, take teh average of this over 5 years
+  ## for the last 5 years, get the ratio of the estimate to the high and the low CI, take the average of this over 5 years
   ## then, make new columns, predicting the bounds based on the average.
   predicted_tb_inc <- add_ci_to_predicted(predicted_tb_inc, df_country)
   ## get df for one country
@@ -116,9 +110,7 @@ model_main <- function(country_name){
   pred1 <- one_country %>% 
     mutate(pred_num_100k = predict(fit, newdata = one_country, type = "response"))
   pred1[] <- lapply(pred1, function(x) ifelse(x<10, 10, x))
-  
-  #new.df <- data.frame(year = pred1$year)
-  
+
   # add target TB incidence for each year
   # keep in mind: only relevant for 2015 and onwards
   pred2 <- pred1 %>% 
@@ -146,9 +138,8 @@ model_main <- function(country_name){
   # calculate the extra number of cases from 2020 to 2035:
   extra_cases <- year_diffs %>% 
     summarize(extra_cases = as.integer(sum(diff)))
-  ## this is a hack to get the number of extra cases out of the script
-  ## if each part of the script were a function, it would be easy to gather up these data
-  ## for all the coutnries and write one file
+  
+  ## get the number of extra cases out of the script
   write_tsv(data.frame(c(country_name, extra_cases)), paste('extra_cases', country_name))
   # return(list(trend, tot_extra_num_cases_2020_2035))
   
@@ -160,7 +151,7 @@ model_main <- function(country_name){
   range_inc = max_inc_100k - min_inc_100k  
   country_name <- shorten_country_name(country_name)
   
-  # country name to be in vernacular form/shortened to fit in graph
+  # shorten country name to fit in graph/use vernacular names
   shorten_country_name(country_name)
   
   # graph modified linear model, include the dataframe showing
@@ -170,22 +161,15 @@ model_main <- function(country_name){
     geom_line(aes(x = year, y = predict_value), data = predicted_tb_inc, colour = "blue", size = 1.2) +
     geom_ribbon(data = df_country, aes(x = year, ymin=e_inc_100k_lo, ymax = e_inc_100k_hi), alpha = 0.3) +
     geom_ribbon(data = predicted_tb_inc, aes(x = year, ymin=proj_ci_lo, ymax = proj_ci_hi), fill = "blue", alpha = 0.3) +
-    #xlab("Year") + ylab("Incidence \nper 100k people") + 
     theme(axis.title = element_blank()) +
     ggtitle(country_name) + 
     annotation_custom(tableGrob(extra_cases, cols = NULL, rows = NULL, theme = ttheme_minimal(base_size = 8)), xmin = 2022, ymin = (max_inc_100k - (0.2*range_inc)))
-    #theme(legend.position = "none", axis.text.y = element_text(size = 8), axis.title.y = element_text(size = 10))
-  
+
   trend
   
 }
 
-# test
-model_main("Cambodia")
-model_main("Republic of Korea")
-model_main("Nigeria")
-
-# process master
+# process master to contain only columns for country, year, and TB incidence values
 master <- master %>% select(country, year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi)
 master <- master %>% filter(country %in% all_countries)
 
@@ -193,7 +177,7 @@ master <- master %>% filter(country %in% all_countries)
 ## stopifnot will error if the expression is not true
 stopifnot(length(unique(master$country)) == 40)
 
-## axis lables which are common to both
+## axes labels are common to both
 y.grob <- textGrob("Incidence per 100k people", gp = gpar(col="black", fontsize=15), rot = 90)
 x.grob <- textGrob("Year", gp = gpar(fontface="bold", col="black", fontsize=15))
 
@@ -201,20 +185,28 @@ x.grob <- textGrob("Year", gp = gpar(fontface="bold", col="black", fontsize=15))
 
 hit_target_countries_projection <- lapply(projected_to_meet_target, model_main)
 hit_plots <- do.call(grid.arrange, hit_target_countries_projection)
-#hit <- marrangeGrob(hit_target_countries_projection, nrow = 4, ncol = 5)
-plot <- plot_grid(hit_plots, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
-grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
+plot_hit <- plot_grid(hit_plots, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+
+# create tiff file figure 4
+tiff(filename = "4_hit_target.tiff", width = 6.75, height = 8, units = "in", res = 300)
+grid.arrange(arrangeGrob(plot_hit, left = y.grob, bottom = x.grob))
+dev.off()
 
 ## model for missing
 
 miss_target_countries_projection <- lapply(projected_to_miss_target, model_main)
 miss_plots <- do.call(grid.arrange, miss_target_countries_projection)
-#hit <- marrangeGrob(hit_target_countries_projection, nrow = 4, ncol = 5)
-plot <- plot_grid(miss_plots, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
-grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
+plot_miss <- plot_grid(miss_plots, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
 
-# generate figures in 2 pages (20 graphs/page) with the specified # rows and columbs
-## Model for all countries
-all_countries_projection <- lapply(all_countries, model_main)
-all <- marrangeGrob(all_countries_projection, nrow = 4, ncol = 5)
-all
+# create tiff file figure 5
+tiff(filename = "5_miss_target.tiff", width = 6.75*1.5, height = 8.75*1.5, units = "in", res = 300)
+grid.arrange(arrangeGrob(plot_miss, left = y.grob, bottom = x.grob))
+dev.off()
+
+## for all countries
+# all_countries_projection <- lapply(all_countries, model_main)
+# all_plots <- do.call(grid.arrange, all_countries_projection)
+# plot_all <- plot_grid(all_plots, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+# tiff(filename = "S6.tiff", width = 6.75*1.5, height = 8.75*1.5, units = "in", res = 300)
+# grid.arrange(arrangeGrob(plot_all, left = y.grob, bottom = x.grob))
+# dev.off()

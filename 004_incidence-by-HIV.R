@@ -1,11 +1,3 @@
-library(grid)
-library(gridExtra)
-library(reshape)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(cowplot)
-
 source("000_source-functions.R")
 
 # Plot TB incidence, TB incidence HIV negative, and TB incidence HIV positive on one graph for each country with high HIV burden
@@ -51,14 +43,25 @@ tb_by_hiv_no_legend <- function(country_name){
 trAngola <- tb_by_hiv("Angola")
 legend <- get_legend(trAngola)
 
-# generate graphs for the 13 (now 15) countries of interest using lapply
-g <- lapply(hiv_13, tb_by_hiv_no_legend)
-g13 <- do.call(grid.arrange, g)
+# generate graphs for the 15 countries of interest using lapply
+g <- lapply(hiv_15, tb_by_hiv_no_legend)
+g15 <- do.call(grid.arrange, g)
+plot <- plot_grid(g15, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
 
-plot <- plot_grid(g13, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+# axes labels
 y.grob <- textGrob("Incidence per 100k people", gp = gpar(col="black", fontsize=15), rot = 90)
 x.grob <- textGrob("Year", gp = gpar(fontface="bold", col="black", fontsize=15))
+
+# create tiff file figure 3
+tiff(filename = "3_tb_hiv.tiff", width = 6.75, height = 8, units = "in", res = 300)
 grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
-## legend is plotted separately as i (PA) can't figure out how to 
-## put it underneath the textGrob which is being used to do a single axis legend
-plot_grid(legend)
+dev.off()
+
+# generate the common legend
+tiff(filename = "3_legend.tiff", width = 6.75, height = 8, units = "in", res = 300)
+grid.arrange(legend)
+dev.off()
+
+g_legend <- plot_grid(legend, rel_heights = c(1, .1), ncol = 1, 
+                      align = 'v', axis = 'c')
+g_legend
