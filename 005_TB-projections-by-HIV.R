@@ -3,6 +3,11 @@
 # call source file
 source("000_source-functions.R")
 
+## needed for the {country_name} in the output tsv file name
+library(glue)
+## and for writing the tsv
+library(readr)
+
 ######################### Data Processing #########################
 ######### WHO incidence data + WorldBank population data ##########
 
@@ -151,6 +156,7 @@ table_main <- function(country_name){
   numb <- predict_numb(country_name)
   country_df <- cbind(inc, numb)
   country_df <- country_df %>% add_column(country_name = country_name, .before = 0)
+  write_tsv(country_df, glue('/Users/flashton/Dropbox/mtb/end_tb_goal_assessment/results/2020.09.06/{country_name}.hiv_and_non_hiv.tsv'))
   return(country_df)
 }
 
