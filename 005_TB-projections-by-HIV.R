@@ -12,7 +12,7 @@ library(readr)
 ######### WHO incidence data + WorldBank population data ##########
 
 # select country, total TB incidence, and HIV+ TB incidence by year
-master <- master %>% select(country, year, e_inc_100k, e_inc_tbhiv_100k) 
+master <- master %>% select(country, year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi, e_inc_tbhiv_100k,  e_inc_tbhiv_100k_lo, e_inc_tbhiv_100k_hi) 
 # change column names for clarity
 master <- master %>% dplyr::rename(total_inc = e_inc_100k, hiv_inc = e_inc_tbhiv_100k)
 
@@ -30,16 +30,45 @@ stopifnot(length(unique(pop.hiv$country)) == 15)
 
 
 ######################### TB INCIDENCE #########################
-################ columns A-D in toy file from PA #################
+
+calc_ci_ratios <- function(df_country){
+  ## add new columns with the ratio of the estimate to the high and low bounds
+  df_country_ci <- df_country %>% mutate(hiv_lb_ratio = e_inc_tbhiv_100k_lo / hiv_inc) %>% mutate(hiv_hb_ratio = e_inc_tbhiv_100k_hi / hiv_inc)
+  df_country_ci <- df_country_ci %>% mutate(no_hiv_lb_ratio = nohiv_inc_lo / nohiv_inc) %>% mutate(no_hiv_hb_ratio = nohiv_inc_hi / nohiv_inc)
+  ## take averge of the last 5 years to obtain ratios 
+  lo_tbhiv <- mean(tail(df_country_ci$hiv_lb_ratio, 5))
+  hi_tbhiv <- mean(tail(df_country_ci$hiv_hb_ratio, 5))
+  lo_nohiv_tb <- mean(tail(df_country_ci$no_hiv_lb_ratio, 5))
+  hi_nohiv_tb <- mean(tail(df_country_ci$no_hiv_hb_ratio, 5))
+  ## df with low and high bound ratios
+  ci_ratios <- data.frame("lo_tbhiv" = lo_tbhiv, "hi_tbhiv" = hi_tbhiv, "lo_nohiv_tb" = lo_nohiv_tb, "hi_nohiv_tb" = hi_nohiv_tb)
+  return(ci_ratios)
+}
+
+
+add_ci_to_predicted <- function(predicted_tb_inc, df_country){
+  ci_ratios <- calc_ci_ratios(df_country)
+  low_tbhiv_bound_ratio <- as.numeric(ci_ratios$lo_tbhiv)
+  high_tbhiv_bound_ratio <- as.numeric(ci_ratios$hi_tbhiv)
+  low_no_hiv_tb_bound_ratio <- as.numeric(ci_ratios$lo_nohiv_tb)
+  high_no_hiv_tb_bound_ratio <- as.numeric(ci_ratios$hi_nohiv_tb)
+  ## only want values for the period for which we rely on projections i.e. > 2018
+  ## so, filter, add the projected CIs
+  tmp_predicted_tb_inc <- predicted_tb_inc %>% filter(year > 2018)
+  tmp_predicted_tb_inc <- tmp_predicted_tb_inc %>% mutate(proj_tbhiv_ci_lo = hiv_inc * low_tbhiv_bound_ratio) %>% mutate(proj_tbhiv_ci_hi = hiv_inc * high_tbhiv_bound_ratio) %>% mutate(proj_no_hiv_tb_ci_lo = nohiv_inc * low_no_hiv_tb_bound_ratio) %>% mutate(proj_no_hiv_tb_ci_hi = nohiv_inc * high_no_hiv_tb_bound_ratio)
+  
+  ## then combine back with predicted_tb_inc using a join
+  predicted_tb_inc <- left_join(predicted_tb_inc, tmp_predicted_tb_inc)
+  
+  return(predicted_tb_inc)
+}
+
 
 # display df for an individual country only through 2035
 get_one_country_df <- function(country_name){
-  
-  df_onecountry <- master.hiv %>% filter(country == country_name) %>% select(year, total_inc, hiv_inc)
-  
+  df_onecountry <- master.hiv %>% filter(country == country_name) %>% select(year, total_inc, hiv_inc, e_inc_100k_lo, e_inc_100k_hi, e_inc_tbhiv_100k_lo, e_inc_tbhiv_100k_hi)
   # add column for HIV negative (nohiv) TB incidence
-  df_onecountry <- df_onecountry %>% mutate(nohiv_inc = total_inc - hiv_inc)
-  
+  df_onecountry <- df_onecountry %>% mutate(nohiv_inc = total_inc - hiv_inc) %>% mutate(nohiv_inc_lo = e_inc_100k_lo - e_inc_tbhiv_100k_lo) %>% mutate(nohiv_inc_hi = e_inc_100k_hi - e_inc_tbhiv_100k_hi)
   # returns df with 4 columns (year, total TB, HIV+ TB, HIV- TB) and 36 rows (2000-2035)
   return(df_onecountry)
 }
@@ -80,12 +109,18 @@ predict_inc <- function(country_name){
   df_preds$hiv_inc <- as.numeric(predict(fit_hiv, df_preds, type = "response"))
   df_preds$nohiv_inc <- as.numeric(predict(fit_nohiv, df_preds, type = "response"))
   
+  df_preds <- add_ci_to_predicted(df_preds, df_actual)
+  
   # minimum incidence set to 10 per 100,000
   # replace all predicted values less than 10 with 10
   df_preds[] <- lapply(df_preds, function(x) ifelse(x<10, 10, x))
   
   
   # bind df_actual (2000-2018) together with df_preds (2019-2035)
+  View(df_actual)
+  View(df_preds)
+  df_preds <- df_preds %>% dplyr::rename(e_inc_tbhiv_100k_lo = proj_tbhiv_ci_lo, e_inc_tbhiv_100k_hi = proj_tbhiv_ci_hi, nohiv_inc_lo = proj_no_hiv_tb_ci_lo, nohiv_inc_hi = proj_no_hiv_tb_ci_hi)
+  df_actual <- df_actual %>% select(-c(e_inc_100k_lo, e_inc_100k_hi))
   df_incidence <- rbind(df_actual, df_preds)
   
   return(df_incidence)
