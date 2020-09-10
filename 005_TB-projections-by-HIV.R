@@ -7,6 +7,7 @@ source("000_source-functions.R")
 library(glue)
 ## and for writing the tsv
 library(readr)
+library(ggplot2)
 
 ######################### Data Processing #########################
 ######### WHO incidence data + WorldBank population data ##########
@@ -157,11 +158,12 @@ predict_numb <- function(country_name){
       
       total_numb = as.numeric(inc_country$total_inc/100000)*as.numeric(pop_country$population),
       hiv_numb = as.numeric(inc_country$hiv_inc/100000)*as.numeric(pop_country$population),
-      nohiv_numb = as.numeric(inc_country$nohiv_inc/100000)*as.numeric(pop_country$population)
+      nohiv_numb = as.numeric(inc_country$nohiv_inc/100000)*as.numeric(pop_country$population),
+      hiv_plus_nohiv = hiv_numb + nohiv_numb
       
-  ) %>% 
+  ) #%>% 
     # don't want two columns for "year" in final, so select all but year
-    select(total_numb, hiv_numb, nohiv_numb)
+    #select(total_numb, hiv_numb, nohiv_numb)
   
   # tried using helper function instead (below)
   # df_number <- df_number %>% 
@@ -178,22 +180,55 @@ predict_numb <- function(country_name){
 #   numb_hiv_status = as.numeric(inc_df$inc_hiv_status/100000)*as.numeric(pop_df$population)
 #   return(numb_hiv_status)
 # }
-  
+
+### Read in target
+
+target <- read_delim("~/Dropbox/mtb/end_tb_goal_assessment/results/2020.09.06/002_output_target_numbers.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
+
+count_excess <- function(a_country_name, target, numb){
+  country_target <- target %>% filter(country_name == a_country_name) %>% filter(year > 2019)
+  numb <- numb %>% filter(year > 2019)
+  View(numb)
+  View(country_target)
+  total_numb_predicted <- sum(numb$hiv_plus_nohiv)
+  total_numb_target <- sum(country_target$target_num_cases_dfses)
+  #View(total_numb_predicted)
+  #View(total_numb_target)
+  output <- data.frame(country_name = a_country_name, total_numb_predicted = total_numb_predicted, total_numb_target = total_numb_target, excess = total_numb_predicted - total_numb_target)
+  write_tsv(output, glue('/Users/flashton/Dropbox/mtb/end_tb_goal_assessment/results/2020.09.06/{a_country_name}.excess_number_cases.tsv'))
+}
+
+graph_hiv_nonhiv_projections <- function(country_df){
+  View(country_df)
+  g <- ggplot(country_df, aes(year, y = value)) + 
+    geom_point(aes(y = total_inc)) +
+    geom_point(aes(y = nohiv_inc)) +
+    geom_point(aes(y = hiv_inc))
+    #geom_smooth(method = "lm", se = TRUE, formula = y ~ x, fill = "blue")
+    #geom_point(aes(y = total_inc, col = "Total"))
+  print(g)
+}
 
 ################### COMBINE INCIDENCE AND NUMBER, 2000-2035 ###################
 ####################### ALL COLUMNS in toy file from PA #######################
 
+table_main("Botswana")
 
 # now, combine incidence and number into one table
 # this generates ONE table that looks like the toy example sent by PA
 table_main <- function(country_name){
   inc <- predict_inc(country_name)
   numb <- predict_numb(country_name)
+  count_excess(country_name, target, numb)
+  numb <- numb %>% select(total_numb, hiv_numb, nohiv_numb, hiv_plus_nohiv)
   country_df <- cbind(inc, numb)
   country_df <- country_df %>% add_column(country_name = country_name, .before = 0)
+  graph_hiv_nonhiv_projections(country_df = country_df)
   write_tsv(country_df, glue('/Users/flashton/Dropbox/mtb/end_tb_goal_assessment/results/2020.09.06/{country_name}.hiv_and_non_hiv.tsv'))
   return(country_df)
 }
+
+
 
 # depending on which countries we decide to do this for:
 # below code applies table_main to all 15 countries
@@ -214,6 +249,7 @@ table_main <- function(country_name){
 #             "United Republic of Tanzania", 
 #             "Zambia", 
 #             "Zimbabwe")
+
 lapply(hiv_15, table_main)
 
 # just for Angola

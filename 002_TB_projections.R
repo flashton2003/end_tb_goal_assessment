@@ -130,6 +130,9 @@ model_main <- function(country_name){
   target_num_cases_df <- pred_num_cases_df %>% 
     mutate(target_num_cases_dfses = (pred_num_cases_df$target_100k/100000)*as.numeric(pred_num_cases_df$pop))
   
+  target_num_cases_df <- target_num_cases_df %>% add_column(country_name = country_name, .before = 0)
+  write_tsv(target_num_cases_df, paste('target_cases', country_name))
+  
   # take the difference to find number of extra cases
   with_diff_df <- target_num_cases_df %>% mutate(diff = as.numeric(target_num_cases_df$pred_cases) - as.numeric(target_num_cases_df$target_num_cases))
   
@@ -204,7 +207,7 @@ grid.arrange(arrangeGrob(plot_miss, left = y.grob, bottom = x.grob))
 dev.off()
 
 ## for all countries
-# all_countries_projection <- lapply(all_countries, model_main)
+all_countries_projection <- lapply(all_countries, model_main)
 # all_plots <- do.call(grid.arrange, all_countries_projection)
 # plot_all <- plot_grid(all_plots, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
 # tiff(filename = "S6.tiff", width = 6.75*1.5, height = 8.75*1.5, units = "in", res = 300)
