@@ -7,15 +7,16 @@ source("000_source-functions.R")
 library(glue)
 ## and for writing the tsv
 library(readr)
-library(ggplot2)
 
 ######################### Data Processing #########################
 ######### WHO incidence data + WorldBank population data ##########
 
-# select country, total TB incidence, and HIV+ TB incidence by year
+# select country, total TB incidence, and HIV+ TB incidence, with CIs by year
 master <- master %>% select(country, year, e_inc_100k, e_inc_100k_lo, e_inc_100k_hi, e_inc_tbhiv_100k,  e_inc_tbhiv_100k_lo, e_inc_tbhiv_100k_hi) 
 # change column names for clarity
-master <- master %>% dplyr::rename(total_inc = e_inc_100k, hiv_inc = e_inc_tbhiv_100k)
+master <- master %>% 
+  dplyr::rename(total_inc = e_inc_100k, total_inc_lo = e_inc_100k_lo, total_inc_hi = e_inc_100k_hi,
+                hiv_inc = e_inc_tbhiv_100k, hiv_inc_lo = e_inc_tbhiv_100k_lo, hiv_inc_hi = e_inc_tbhiv_100k_hi)
 
 # master.hiv with only the 15 countries of interest
 master.hiv <- master %>% filter(country %in% hiv_15)
@@ -34,18 +35,17 @@ stopifnot(length(unique(pop.hiv$country)) == 15)
 
 calc_ci_ratios <- function(df_country){
   ## add new columns with the ratio of the estimate to the high and low bounds
-  df_country_ci <- df_country %>% mutate(hiv_lb_ratio = e_inc_tbhiv_100k_lo / hiv_inc) %>% mutate(hiv_hb_ratio = e_inc_tbhiv_100k_hi / hiv_inc)
-  df_country_ci <- df_country_ci %>% mutate(no_hiv_lb_ratio = nohiv_inc_lo / nohiv_inc) %>% mutate(no_hiv_hb_ratio = nohiv_inc_hi / nohiv_inc)
+  df_country_ci <- df_country %>% mutate(hiv_lb_ratio = hiv_inc_lo / hiv_inc) %>% mutate(hiv_hb_ratio = hiv_inc_hi / hiv_inc)
+  df_country_ci <- df_country_ci %>% mutate(nohiv_lb_ratio = nohiv_inc_lo / nohiv_inc) %>% mutate(nohiv_hb_ratio = nohiv_inc_hi / nohiv_inc)
   ## take averge of the last 5 years to obtain ratios 
   lo_tbhiv <- mean(tail(df_country_ci$hiv_lb_ratio, 5))
   hi_tbhiv <- mean(tail(df_country_ci$hiv_hb_ratio, 5))
-  lo_nohiv_tb <- mean(tail(df_country_ci$no_hiv_lb_ratio, 5))
-  hi_nohiv_tb <- mean(tail(df_country_ci$no_hiv_hb_ratio, 5))
+  lo_nohiv_tb <- mean(tail(df_country_ci$nohiv_lb_ratio, 5))
+  hi_nohiv_tb <- mean(tail(df_country_ci$nohiv_hb_ratio, 5))
   ## df with low and high bound ratios
   ci_ratios <- data.frame("lo_tbhiv" = lo_tbhiv, "hi_tbhiv" = hi_tbhiv, "lo_nohiv_tb" = lo_nohiv_tb, "hi_nohiv_tb" = hi_nohiv_tb)
   return(ci_ratios)
 }
-
 
 add_ci_to_predicted <- function(predicted_tb_inc, df_country){
   ci_ratios <- calc_ci_ratios(df_country)
@@ -56,7 +56,11 @@ add_ci_to_predicted <- function(predicted_tb_inc, df_country){
   ## only want values for the period for which we rely on projections i.e. > 2018
   ## so, filter, add the projected CIs
   tmp_predicted_tb_inc <- predicted_tb_inc %>% filter(year > 2018)
-  tmp_predicted_tb_inc <- tmp_predicted_tb_inc %>% mutate(proj_tbhiv_ci_lo = hiv_inc * low_tbhiv_bound_ratio) %>% mutate(proj_tbhiv_ci_hi = hiv_inc * high_tbhiv_bound_ratio) %>% mutate(proj_no_hiv_tb_ci_lo = nohiv_inc * low_no_hiv_tb_bound_ratio) %>% mutate(proj_no_hiv_tb_ci_hi = nohiv_inc * high_no_hiv_tb_bound_ratio)
+  tmp_predicted_tb_inc <- tmp_predicted_tb_inc %>% 
+    mutate(proj_tbhiv_ci_lo = hiv_inc * low_tbhiv_bound_ratio) %>% 
+    mutate(proj_tbhiv_ci_hi = hiv_inc * high_tbhiv_bound_ratio) %>% 
+    mutate(proj_no_hiv_tb_ci_lo = nohiv_inc * low_no_hiv_tb_bound_ratio) %>% 
+    mutate(proj_no_hiv_tb_ci_hi = nohiv_inc * high_no_hiv_tb_bound_ratio)
   
   ## then combine back with predicted_tb_inc using a join
   predicted_tb_inc <- left_join(predicted_tb_inc, tmp_predicted_tb_inc)
@@ -64,15 +68,20 @@ add_ci_to_predicted <- function(predicted_tb_inc, df_country){
   return(predicted_tb_inc)
 }
 
-
 # display df for an individual country only through 2035
 get_one_country_df <- function(country_name){
-  df_onecountry <- master.hiv %>% filter(country == country_name) %>% select(year, total_inc, hiv_inc, e_inc_100k_lo, e_inc_100k_hi, e_inc_tbhiv_100k_lo, e_inc_tbhiv_100k_hi)
-  # add column for HIV negative (nohiv) TB incidence
-  df_onecountry <- df_onecountry %>% mutate(nohiv_inc = total_inc - hiv_inc) %>% mutate(nohiv_inc_lo = e_inc_100k_lo - e_inc_tbhiv_100k_lo) %>% mutate(nohiv_inc_hi = e_inc_100k_hi - e_inc_tbhiv_100k_hi)
-  # returns df with 4 columns (year, total TB, HIV+ TB, HIV- TB) and 36 rows (2000-2035)
+  df_onecountry <- master.hiv %>% 
+    filter(country == country_name) %>% 
+    select(year, total_inc, total_inc_lo, total_inc_hi, hiv_inc, hiv_inc_lo, hiv_inc_hi)
+  # add HIV negative (nohiv) TB incidence including low and high bound
+  df_onecountry <- df_onecountry %>% 
+    mutate(nohiv_inc = total_inc - hiv_inc) %>% 
+    mutate(nohiv_inc_lo = total_inc_lo - hiv_inc_lo) %>% 
+    mutate(nohiv_inc_hi = total_inc_hi - hiv_inc_hi)
+  # returns df with 10 cols and 36 rows (2000-2035)
   return(df_onecountry)
 }
+
 
 # display tb incidence from 2000 to 2035 by hiv status
 # from 2000 to 2018 is WHO data; from 2019 to 2035 is predicted data
@@ -101,7 +110,6 @@ predict_inc <- function(country_name){
   # for HIV- (nohiv) TB incidence
   fit_nohiv <- lm(nohiv_inc ~ year, data = df_actual[row:end,])
   
-  
   # create empty df with same columns from years 2019 to 2035
   df_preds <- data.frame(year = 2019:2035, total_inc = 0, hiv_inc = 0, nohiv_inc = 0)
   
@@ -110,18 +118,20 @@ predict_inc <- function(country_name){
   df_preds$hiv_inc <- as.numeric(predict(fit_hiv, df_preds, type = "response"))
   df_preds$nohiv_inc <- as.numeric(predict(fit_nohiv, df_preds, type = "response"))
   
+  # add confidence intervals
   df_preds <- add_ci_to_predicted(df_preds, df_actual)
   
   # minimum incidence set to 10 per 100,000
   # replace all predicted values less than 10 with 10
   df_preds[] <- lapply(df_preds, function(x) ifelse(x<10, 10, x))
   
-  
   # bind df_actual (2000-2018) together with df_preds (2019-2035)
-  View(df_actual)
-  View(df_preds)
-  df_preds <- df_preds %>% dplyr::rename(e_inc_tbhiv_100k_lo = proj_tbhiv_ci_lo, e_inc_tbhiv_100k_hi = proj_tbhiv_ci_hi, nohiv_inc_lo = proj_no_hiv_tb_ci_lo, nohiv_inc_hi = proj_no_hiv_tb_ci_hi)
-  df_actual <- df_actual %>% select(-c(e_inc_100k_lo, e_inc_100k_hi))
+  # View(df_actual)
+  # View(df_preds)
+  df_preds <- df_preds %>% 
+    dplyr::rename(hiv_inc_lo = proj_tbhiv_ci_lo, hiv_inc_hi = proj_tbhiv_ci_hi, 
+                  nohiv_inc_lo = proj_no_hiv_tb_ci_lo, nohiv_inc_hi = proj_no_hiv_tb_ci_hi)
+  df_actual <- df_actual %>% select(-c(total_inc_lo, total_inc_hi))
   df_incidence <- rbind(df_actual, df_preds)
   
   return(df_incidence)
@@ -134,10 +144,8 @@ predict_inc <- function(country_name){
   ### malawi <- predict_by_hiv("Malawi")
   ### malawi[nrow(malawi), ] # returns 48, consistent with Table 2
 
-
 ######################### TB NUMBER OF CASES #########################
 ################### columns E-G in toy file from PA ####################
-
 
 # now that we know incidence of TB by HIV status 2000-2035, 
 # we want the actual NUMBER OF TB CASES by HIV status 2000-2035.
@@ -164,50 +172,85 @@ predict_numb <- function(country_name){
   ) #%>% 
     # don't want two columns for "year" in final, so select all but year
     #select(total_numb, hiv_numb, nohiv_numb)
-  
-  # tried using helper function instead (below)
-  # df_number <- df_number %>% 
-  #   mutate(
-  #     total_numb = get_numb_from_inc(inc_country, pop_country, total_inc)
-  #   )
 
   return(df_number)
   
 }
 
-# tried doing helper function to embed into predict_numb but not working
-# get_numb_from_inc <- function(inc_df, pop_df, inc_hiv_status){
-#   numb_hiv_status = as.numeric(inc_df$inc_hiv_status/100000)*as.numeric(pop_df$population)
-#   return(numb_hiv_status)
-# }
+
+######################### CALCULATE EXCESS NUM CASES #########################
 
 ### Read in target
 
-target <- read_delim("~/Dropbox/mtb/end_tb_goal_assessment/results/2020.09.06/002_output_target_numbers.tsv", "\t", escape_double = FALSE, trim_ws = TRUE)
+target <- read.delim("002_output_target_numbers.tsv", sep = "\t")
 
+# want excess number of cases from 2020 to 2035
+# num is the predicted number of cases (with predict_numb)
 count_excess <- function(a_country_name, target, numb){
-  country_target <- target %>% filter(country_name == a_country_name) %>% filter(year > 2019)
+  country_target <- target %>% 
+    filter(country_name == a_country_name) %>% 
+    filter(year > 2019)
   numb <- numb %>% filter(year > 2019)
-  View(numb)
-  View(country_target)
+  # View(numb)
+  # View(country_target)
   total_numb_predicted <- sum(numb$hiv_plus_nohiv)
   total_numb_target <- sum(country_target$target_num_cases_dfses)
-  #View(total_numb_predicted)
-  #View(total_numb_target)
+  # View(total_numb_predicted)
+  # View(total_numb_target)
   output <- data.frame(country_name = a_country_name, total_numb_predicted = total_numb_predicted, total_numb_target = total_numb_target, excess = total_numb_predicted - total_numb_target)
   write_tsv(output, glue('/Users/flashton/Dropbox/mtb/end_tb_goal_assessment/results/2020.09.06/{a_country_name}.excess_number_cases.tsv'))
 }
 
-graph_hiv_nonhiv_projections <- function(country_df){
-  View(country_df)
-  g <- ggplot(country_df, aes(year, y = value)) + 
-    geom_point(aes(y = total_inc)) +
-    geom_point(aes(y = nohiv_inc)) +
-    geom_point(aes(y = hiv_inc))
-    #geom_smooth(method = "lm", se = TRUE, formula = y ~ x, fill = "blue")
-    #geom_point(aes(y = total_inc, col = "Total"))
-  print(g)
+
+######################################## 2020.09.12 JC ########################################
+############## GENERATE GRAPH LIKE FIG. 3, NOW INCLUDING PROJECTIONS THRU 2035 ##############
+
+tb_by_hiv_2035 <- function(country_name){
+
+  full_inc_df <- predict_inc(country_name)
+  
+  p <- ggplot(full_inc_df, aes(year, y = value, colour = Incidence)) +
+    geom_point(aes(y = total_inc, col = "Total")) +
+    geom_point(aes(y = hiv_inc, col = "HIV infected")) +
+    geom_point(aes(y = nohiv_inc, col = "HIV uninfected")) +
+    #xlab("Year") + ylab("Incidence \nper 100k people") + 
+    theme(axis.title = element_blank()) +
+    ggtitle(country_name) + 
+    # make legend horizontal in one row
+    guides(colour = guide_legend(ncol = 1)) +
+    # modify legend title
+    labs(colour = "Population") +
+    ylim(0, NA)
 }
+  
+  
+# without legend
+tb_by_hiv_2035_no_legend <- function(country_name){
+  tb_by_hiv_2035(country_name) + theme(legend.position = "none")
+}
+
+# obtain common legend
+trAngola <- tb_by_hiv_2035("Angola")
+legend <- get_legend(trAngola)
+
+# generate graphs for the 15 countries of interest using lapply
+g <- lapply(hiv_15, tb_by_hiv_2035_no_legend)
+g15 <- do.call(grid.arrange, g)
+plot <- plot_grid(g15, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+
+# axes labels
+y.grob <- textGrob("Incidence per 100k people", gp = gpar(col="black", fontsize=15), rot = 90)
+x.grob <- textGrob("Year", gp = gpar(fontface="bold", col="black", fontsize=15))
+
+# create tiff file
+tiff(filename = "005_tb_hiv_2000_2035.tiff", width = 6.75, height = 8, units = "in", res = 300)
+grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
+dev.off()
+
+# generate the common legend
+tiff(filename = "005_tb_hiv_2000_2035_legend.tiff", width = 6.75, height = 8, units = "in", res = 300)
+grid.arrange(legend)
+dev.off()
 
 ################### COMBINE INCIDENCE AND NUMBER, 2000-2035 ###################
 ####################### ALL COLUMNS in toy file from PA #######################
@@ -227,28 +270,6 @@ table_main <- function(country_name){
   write_tsv(country_df, glue('/Users/flashton/Dropbox/mtb/end_tb_goal_assessment/results/2020.09.06/{country_name}.hiv_and_non_hiv.tsv'))
   return(country_df)
 }
-
-
-
-# depending on which countries we decide to do this for:
-# below code applies table_main to all 15 countries
-# (may need to do one-by-one to keep track of which country is associated with which)
-# the order is in 000, and also below:
-# hiv_15 <- c("Angola", 
-#             "Botswana", 
-#             "Cameroon", 
-#             "Congo", 
-#             "Eswatini", 
-#             "Kenya", 
-#             "Lesotho", 
-#             "Malawi", 
-#             "Namibia", 
-#             "Sierra Leone", 
-#             "South Africa", 
-#             "Uganda", 
-#             "United Republic of Tanzania", 
-#             "Zambia", 
-#             "Zimbabwe")
 
 lapply(hiv_15, table_main)
 
