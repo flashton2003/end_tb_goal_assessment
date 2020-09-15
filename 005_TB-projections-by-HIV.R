@@ -134,7 +134,7 @@ predict_inc <- function(country_name){
   df_actual <- df_actual %>% select(-c(total_inc_lo, total_inc_hi))
   df_incidence <- rbind(df_actual, df_preds)
   
-  return(df_incidence)
+  return(list("df_incidence" = df_incidence, "df_actual" = df_actual, "df_preds" = df_preds))
 }
 
 ### validate to make sure predict_by_hiv numbers match with 002 YES!
@@ -153,8 +153,9 @@ predict_inc <- function(country_name){
 predict_numb <- function(country_name){
   
   # get incidence predictions of that country from predict_inc, 2000-2035
-  inc_country <- predict_inc(country_name)
-  
+  predict_inc_output <- predict_inc(country_name)
+  inc_country <- predict_inc_output$df_incidence
+  View(inc_country)
   # get population of that country, 2000-2035 (worldbank data)
   pop_country <- pop.hiv %>% filter(country == country_name) %>% select(year, population)
   
@@ -177,6 +178,7 @@ predict_numb <- function(country_name){
   
 }
 
+predict_numb("Botswana")
 
 ######################### CALCULATE EXCESS NUM CASES #########################
 
@@ -207,12 +209,19 @@ count_excess <- function(a_country_name, target, numb){
 
 tb_by_hiv_2035 <- function(country_name){
 
-  full_inc_df <- predict_inc(country_name)
+  predict_inc_output <- predict_inc(country_name)
+  df_actual <- predict_inc_output$df_actual
+  df_preds <- predict_inc_output$df_preds
   
-  p <- ggplot(full_inc_df, aes(year, y = value, colour = Incidence)) +
-    geom_point(aes(y = total_inc, col = "Total")) +
-    geom_point(aes(y = hiv_inc, col = "HIV infected")) +
-    geom_point(aes(y = nohiv_inc, col = "HIV uninfected")) +
+  # p <- ggplot(full_inc_df, aes(year, y = value, colour = Incidence)) +
+  p <- ggplot() +
+    geom_point(data = df_actual, aes(x = year, y = total_inc, col = "Total", shape = "WHO Estimate")) +
+    geom_point(data = df_actual, aes(x = year, y = hiv_inc, col = "HIV infected", shape = "WHO Estimate")) +
+    geom_point(data = df_actual, aes(x = year, y = nohiv_inc, col = "HIV uninfected", shape = "WHO Estimate")) +
+    geom_point(data = df_preds, aes(x = year, y = total_inc, col = "Total", shape = "Predicted")) +
+    geom_point(data = df_preds, aes(x = year, y = hiv_inc, col = "HIV infected", shape = "Predicted")) +
+    geom_point(data = df_preds, aes(x = year, y = nohiv_inc, col = "HIV uninfected", shape = "Predicted")) +
+    scale_shape_manual(values = c(1, 16)) +
     #xlab("Year") + ylab("Incidence \nper 100k people") + 
     theme(axis.title = element_blank()) +
     ggtitle(country_name) + 
@@ -221,6 +230,7 @@ tb_by_hiv_2035 <- function(country_name){
     # modify legend title
     labs(colour = "Population") +
     ylim(0, NA)
+  print(p)
 }
   
   
@@ -257,16 +267,17 @@ dev.off()
 
 table_main("Botswana")
 
+
 # now, combine incidence and number into one table
 # this generates ONE table that looks like the toy example sent by PA
 table_main <- function(country_name){
-  inc <- predict_inc(country_name)
+  predict_inc_output <- predict_inc(country_name)
+  inc <- predict_inc_output$df_incidence
   numb <- predict_numb(country_name)
   count_excess(country_name, target, numb)
   numb <- numb %>% select(total_numb, hiv_numb, nohiv_numb, hiv_plus_nohiv)
   country_df <- cbind(inc, numb)
   country_df <- country_df %>% add_column(country_name = country_name, .before = 0)
-  graph_hiv_nonhiv_projections(country_df = country_df)
   write_tsv(country_df, glue('/Users/flashton/Dropbox/mtb/end_tb_goal_assessment/results/2020.09.06/{country_name}.hiv_and_non_hiv.tsv'))
   return(country_df)
 }
