@@ -90,10 +90,9 @@ predict_inc <- function(country_name){
   
   # get df of just that country (2000-2018 WHO reported data)
   df_actual <- get_one_country_df(country_name)
-  
+  df_actual <- df_actual %>% mutate(hiv_plus_nohiv = hiv_inc + nohiv_inc)
   # extract start year for projection, same year as for overall projection (in 002)
   year_start <- years[country_name]
-  
   
   # fit models from year_start to 2018
   # row is the row number corresponding to year start
@@ -113,24 +112,31 @@ predict_inc <- function(country_name){
   # create empty df with same columns from years 2019 to 2035
   df_preds <- data.frame(year = 2019:2035, total_inc = 0, hiv_inc = 0, nohiv_inc = 0)
   
+
+  
   # populate df_preds from 2019 to 2035
   df_preds$total_inc <- as.numeric(predict(fit_total, df_preds, type = "response"))
   df_preds$hiv_inc <- as.numeric(predict(fit_hiv, df_preds, type = "response"))
   df_preds$nohiv_inc <- as.numeric(predict(fit_nohiv, df_preds, type = "response"))
-  
-  # add confidence intervals
-  df_preds <- add_ci_to_predicted(df_preds, df_actual)
-  
-  # minimum incidence set to 10 per 100,000
   # replace all predicted values less than 10 with 10
   df_preds[] <- lapply(df_preds, function(x) ifelse(x<10, 10, x))
+  # this is different from total as its the sum of the hiv and non-hiv predictions, not the overall prediction
+  df_preds <- df_preds %>% mutate(hiv_plus_nohiv = hiv_inc + nohiv_inc)
+  df_preds[] <- lapply(df_preds, function(x) ifelse(x<10, 10, x))
+  View(df_preds)
+  # add confidence intervals
+  df_preds <- add_ci_to_predicted(df_preds, df_actual)
+  df_preds <- df_preds %>% 
+    dplyr::rename(hiv_inc_lo = proj_tbhiv_ci_lo, hiv_inc_hi = proj_tbhiv_ci_hi, 
+                  nohiv_inc_lo = proj_no_hiv_tb_ci_lo, nohiv_inc_hi = proj_no_hiv_tb_ci_hi)
+  
+  # minimum incidence set to 10 per 100,000
+
   
   # bind df_actual (2000-2018) together with df_preds (2019-2035)
   # View(df_actual)
   # View(df_preds)
-  df_preds <- df_preds %>% 
-    dplyr::rename(hiv_inc_lo = proj_tbhiv_ci_lo, hiv_inc_hi = proj_tbhiv_ci_hi, 
-                  nohiv_inc_lo = proj_no_hiv_tb_ci_lo, nohiv_inc_hi = proj_no_hiv_tb_ci_hi)
+  
   df_actual <- df_actual %>% select(-c(total_inc_lo, total_inc_hi))
   df_incidence <- rbind(df_actual, df_preds)
   
@@ -193,8 +199,6 @@ count_excess <- function(a_country_name, target, numb){
     filter(country_name == a_country_name) %>% 
     filter(year > 2019)
   numb <- numb %>% filter(year > 2019)
-  # View(numb)
-  # View(country_target)
   total_numb_predicted <- sum(numb$hiv_plus_nohiv)
   total_numb_target <- sum(country_target$target_num_cases_dfses)
   # View(total_numb_predicted)
@@ -212,13 +216,15 @@ tb_by_hiv_2035 <- function(country_name){
   predict_inc_output <- predict_inc(country_name)
   df_actual <- predict_inc_output$df_actual
   df_preds <- predict_inc_output$df_preds
+  View(df_actual)
+  View(df_preds)
   
   # p <- ggplot(full_inc_df, aes(year, y = value, colour = Incidence)) +
   p <- ggplot() +
-    geom_point(data = df_actual, aes(x = year, y = total_inc, col = "Total", shape = "WHO Estimate")) +
+    geom_point(data = df_actual, aes(x = year, y = hiv_plus_nohiv, col = "Total", shape = "WHO Estimate")) +
     geom_point(data = df_actual, aes(x = year, y = hiv_inc, col = "HIV infected", shape = "WHO Estimate")) +
     geom_point(data = df_actual, aes(x = year, y = nohiv_inc, col = "HIV uninfected", shape = "WHO Estimate")) +
-    geom_point(data = df_preds, aes(x = year, y = total_inc, col = "Total", shape = "Predicted")) +
+    geom_point(data = df_preds, aes(x = year, y = hiv_plus_nohiv, col = "Total", shape = "Predicted")) +
     geom_point(data = df_preds, aes(x = year, y = hiv_inc, col = "HIV infected", shape = "Predicted")) +
     geom_point(data = df_preds, aes(x = year, y = nohiv_inc, col = "HIV uninfected", shape = "Predicted")) +
     scale_shape_manual(values = c(1, 16)) +
@@ -228,7 +234,7 @@ tb_by_hiv_2035 <- function(country_name){
     # make legend horizontal in one row
     guides(colour = guide_legend(ncol = 1)) +
     # modify legend title
-    labs(colour = "Population") +
+    labs(colour = "Population", shape = 'Source') +
     ylim(0, NA)
   print(p)
 }
@@ -240,7 +246,7 @@ tb_by_hiv_2035_no_legend <- function(country_name){
 }
 
 # obtain common legend
-trAngola <- tb_by_hiv_2035("Angola")
+trAngola <- tb_by_hiv_2035("Botswana")
 legend <- get_legend(trAngola)
 
 # generate graphs for the 15 countries of interest using lapply
@@ -285,4 +291,4 @@ table_main <- function(country_name){
 lapply(hiv_15, table_main)
 
 # just for Angola
-table_main("Angola")
+table_main("Botswana")
