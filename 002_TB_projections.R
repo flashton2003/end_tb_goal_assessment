@@ -84,7 +84,7 @@ model_main <- function(country_name){
   
   # row begins at year_start
   row <- as.numeric(rownames(df_country[df_country$year == year_start,]))
-  
+  View(df_country)
   # fit model from year_start to 2018
   fit <- lm(e_inc_100k ~ year, data = df_country[row:nrow(df_country),])
   
@@ -165,8 +165,8 @@ model_main <- function(country_name){
     geom_ribbon(data = df_country, aes(x = year, ymin=e_inc_100k_lo, ymax = e_inc_100k_hi), alpha = 0.3) +
     geom_ribbon(data = predicted_tb_inc, aes(x = year, ymin=proj_ci_lo, ymax = proj_ci_hi), fill = "blue", alpha = 0.3) +
     theme(axis.title = element_blank()) +
-    ggtitle(country_name) + 
-    annotation_custom(tableGrob(extra_cases, cols = NULL, rows = NULL, theme = ttheme_minimal(base_size = 8)), xmin = 2022, ymin = (max_inc_100k - (0.2*range_inc)))
+    ggtitle(country_name) 
+    #annotation_custom(tableGrob(extra_cases, cols = NULL, rows = NULL, theme = ttheme_minimal(base_size = 8)), xmin = 2022, ymin = (max_inc_100k - (0.2*range_inc)))
 
   trend
   
@@ -185,20 +185,22 @@ y.grob <- textGrob("Incidence per 100k people", gp = gpar(col="black", fontsize=
 x.grob <- textGrob("Year", gp = gpar(fontface="bold", col="black", fontsize=15))
 
 ## model for low hiv burden hitting target
-low_hiv_meeting <- c('Ethiopia', 'Myanmar', 'Russian Federation', 'South Korea', 'Laos')
+low_hiv_meeting <- c('Ethiopia', 'Myanmar', 'Russian Federation', 'Republic of Korea', 'Laos')
 
 low_hiv_hit_target_countries_projection <- lapply(low_hiv_meeting, model_main)
 hit_plots <- do.call(grid.arrange, low_hiv_hit_target_countries_projection)
 plot_hit <- plot_grid(hit_plots, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
 
 # create tiff file figure 4
-tiff(filename = "4_hit_target.tiff", width = 6.75, height = 8, units = "in", res = 300)
+tiff(filename = "low_hiv_hit_target.tiff", width = 6.75, height = 8, units = "in", res = 300)
 grid.arrange(arrangeGrob(plot_hit, left = y.grob, bottom = x.grob))
 dev.off()
 
+low_hiv_missing <- c('Guinea-Bissau', 'Cambodia', 'Liberia', 'Chad', 'Ghana', 'Thailand', 'Central African Republic', 'Papua New Guinea', 'Brazil', 'Vietnam', 'North Korea', 'China', 'Mozambique', 'Democratic Republic of the Congo', 'Bangladesh', 'Nigeria', 'Pakistan', 'Philippines', 'Indonesia', 'India')
+
 ## model for missing
 
-miss_target_countries_projection <- lapply(projected_to_miss_target, model_main)
+low_hiv_miss_target_countries_projection <- lapply(low_hiv_missing, model_main)
 miss_plots <- do.call(grid.arrange, miss_target_countries_projection)
 plot_miss <- plot_grid(miss_plots, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
 
