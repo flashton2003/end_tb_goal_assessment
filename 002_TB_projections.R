@@ -184,10 +184,11 @@ stopifnot(length(unique(master$country)) == 40)
 y.grob <- textGrob("Incidence per 100k people", gp = gpar(col="black", fontsize=15), rot = 90)
 x.grob <- textGrob("Year", gp = gpar(fontface="bold", col="black", fontsize=15))
 
-## model for hitting target
+## model for low hiv burden hitting target
+low_hiv_meeting <- c('Ethiopia', 'Myanmar', 'Russian Federation', 'South Korea', 'Laos')
 
-hit_target_countries_projection <- lapply(projected_to_meet_target, model_main)
-hit_plots <- do.call(grid.arrange, hit_target_countries_projection)
+low_hiv_hit_target_countries_projection <- lapply(low_hiv_meeting, model_main)
+hit_plots <- do.call(grid.arrange, low_hiv_hit_target_countries_projection)
 plot_hit <- plot_grid(hit_plots, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
 
 # create tiff file figure 4

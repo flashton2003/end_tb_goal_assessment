@@ -36,14 +36,11 @@ stopifnot(length(unique(pop.hiv$country)) == 15)
 calc_ci_ratios <- function(df_country){
   ## add new columns with the ratio of the estimate to the high and low bounds
   df_country_ci <- df_country %>% mutate(hiv_lb_ratio = hiv_inc_lo / hiv_inc) %>% mutate(hiv_hb_ratio = hiv_inc_hi / hiv_inc)
-  df_country_ci <- df_country_ci %>% mutate(nohiv_lb_ratio = nohiv_inc_lo / nohiv_inc) %>% mutate(nohiv_hb_ratio = nohiv_inc_hi / nohiv_inc)
   ## take averge of the last 5 years to obtain ratios 
   lo_tbhiv <- mean(tail(df_country_ci$hiv_lb_ratio, 5))
   hi_tbhiv <- mean(tail(df_country_ci$hiv_hb_ratio, 5))
-  lo_nohiv_tb <- mean(tail(df_country_ci$nohiv_lb_ratio, 5))
-  hi_nohiv_tb <- mean(tail(df_country_ci$nohiv_hb_ratio, 5))
   ## df with low and high bound ratios
-  ci_ratios <- data.frame("lo_tbhiv" = lo_tbhiv, "hi_tbhiv" = hi_tbhiv, "lo_nohiv_tb" = lo_nohiv_tb, "hi_nohiv_tb" = hi_nohiv_tb)
+  ci_ratios <- data.frame("lo_tbhiv" = lo_tbhiv, "hi_tbhiv" = hi_tbhiv)
   return(ci_ratios)
 }
 
@@ -51,18 +48,12 @@ add_ci_to_predicted <- function(predicted_tb_inc, df_country){
   ci_ratios <- calc_ci_ratios(df_country)
   low_tbhiv_bound_ratio <- as.numeric(ci_ratios$lo_tbhiv)
   high_tbhiv_bound_ratio <- as.numeric(ci_ratios$hi_tbhiv)
-  low_no_hiv_tb_bound_ratio <- as.numeric(ci_ratios$lo_nohiv_tb)
-  high_no_hiv_tb_bound_ratio <- as.numeric(ci_ratios$hi_nohiv_tb)
   ## only want values for the period for which we rely on projections i.e. > 2018
   ## so, filter, add the projected CIs
   tmp_predicted_tb_inc <- predicted_tb_inc %>% filter(year > 2018)
   tmp_predicted_tb_inc <- tmp_predicted_tb_inc %>% 
     mutate(proj_tbhiv_ci_lo = hiv_inc * low_tbhiv_bound_ratio) %>% 
-    mutate(proj_tbhiv_ci_hi = hiv_inc * high_tbhiv_bound_ratio) %>% 
-    mutate(proj_no_hiv_tb_ci_lo = nohiv_inc * low_no_hiv_tb_bound_ratio) %>% 
-    mutate(proj_no_hiv_tb_ci_hi = nohiv_inc * high_no_hiv_tb_bound_ratio)
-    
-  
+    mutate(proj_tbhiv_ci_hi = hiv_inc * high_tbhiv_bound_ratio)
   ## then combine back with predicted_tb_inc using a join
   predicted_tb_inc <- left_join(predicted_tb_inc, tmp_predicted_tb_inc)
   return(predicted_tb_inc)
@@ -75,11 +66,11 @@ get_one_country_df <- function(country_name){
     select(year, total_inc, total_inc_lo, total_inc_hi, hiv_inc, hiv_inc_lo, hiv_inc_hi)
   # add HIV negative (nohiv) TB incidence including low and high bound
   df_onecountry <- df_onecountry %>% 
-    mutate(nohiv_inc = total_inc - hiv_inc) %>% 
-    mutate(nohiv_inc_lo = total_inc_lo - hiv_inc_lo) %>% 
-    mutate(nohiv_inc_hi = total_inc_hi - hiv_inc_hi)
+    mutate(nohiv_inc = total_inc - hiv_inc)
+    #mutate(nohiv_inc_lo = total_inc_lo - hiv_inc_lo) %>% 
+    #mutate(nohiv_inc_hi = total_inc_hi - hiv_inc_hi)
   # returns df with 10 cols and 36 rows (2000-2035)
-  View(df_onecountry)
+  #View(df_onecountry)
   return(df_onecountry)
 }
 
@@ -91,7 +82,7 @@ predict_inc <- function(country_name){
   
   # get df of just that country (2000-2018 WHO reported data)
   df_actual <- get_one_country_df(country_name)
-  View(df_actual)
+  #View(df_actual)
   df_actual <- df_actual %>% mutate(hiv_plus_nohiv = hiv_inc + nohiv_inc)
   # extract start year for projection, same year as for overall projection (in 002)
   year_start <- years[country_name]
@@ -131,18 +122,17 @@ predict_inc <- function(country_name){
   df_preds <- add_ci_to_predicted(df_preds, df_actual)
   #View(df_preds)
   df_preds <- df_preds %>% 
-    dplyr::rename(hiv_inc_lo = proj_tbhiv_ci_lo, hiv_inc_hi = proj_tbhiv_ci_hi, 
-                  nohiv_inc_lo = proj_no_hiv_tb_ci_lo, nohiv_inc_hi = proj_no_hiv_tb_ci_hi)
+    dplyr::rename(hiv_inc_lo = proj_tbhiv_ci_lo, hiv_inc_hi = proj_tbhiv_ci_hi)
 
   # bind df_actual (2000-2018) together with df_preds (2019-2035)
   # View(df_actual)
   # View(df_preds)
   
-  df_actual <- df_actual %>% select(-c(total_inc_lo, total_inc_hi))
+  df_actual_narrow <- df_actual %>% select(-c(total_inc_lo, total_inc_hi))
   #View(df_actual)
   #View(df_preds)
   #thinner_df_preds <- df_preds %>% select(-c())
-  df_incidence <- rbind(df_actual, df_preds)
+  df_incidence <- rbind(df_actual_narrow, df_preds)
   
   return(list("df_incidence" = df_incidence, "df_actual" = df_actual, "df_preds" = df_preds))
 }
@@ -219,10 +209,8 @@ tb_by_hiv_2035 <- function(country_name){
   predict_inc_output <- predict_inc(country_name)
   df_actual <- predict_inc_output$df_actual
   df_preds <- predict_inc_output$df_preds
-  df_preds <- df_preds %>% mutate(hiv_plus_nohiv_lo = hiv_inc_lo + nohiv_inc_lo) %>%
-    mutate(hiv_plus_nohiv_hi = hiv_inc_hi + nohiv_inc_hi)
-  df_actual <- df_actual %>% mutate(hiv_plus_nohiv_lo = hiv_inc_lo + nohiv_inc_lo) %>%
-    mutate(hiv_plus_nohiv_hi = hiv_inc_hi + nohiv_inc_hi)
+  inc_2015 <- df_actual[16,2]
+  df_target <- data.frame("year" = c(2015, 2020, 2025, 2030, 2035), "num" = c(inc_2015, inc_2015 * 0.8, inc_2015 * 0.5, inc_2015 * 0.2, inc_2015 * 0.1))
   View(df_actual)
   #View(df_preds)
   
@@ -234,18 +222,13 @@ tb_by_hiv_2035 <- function(country_name){
     geom_point(data = df_preds, aes(x = year, y = hiv_plus_nohiv, col = "Total", shape = "Predicted")) +
     geom_point(data = df_preds, aes(x = year, y = hiv_inc, col = "HIV infected", shape = "Predicted")) +
     geom_point(data = df_preds, aes(x = year, y = nohiv_inc, col = "HIV uninfected", shape = "Predicted")) +
-    geom_line(data = df_preds, aes(x = year, y = hiv_plus_nohiv_lo, col = "Total", alpha = 0.3), linetype = "dashed") +
-    geom_line(data = df_preds, aes(x = year, y = hiv_plus_nohiv_hi, col = "Total", alpha = 0.3), linetype = "dashed") +
     geom_line(data = df_preds, aes(x = year, y = hiv_inc_hi, col = "HIV infected", alpha = 0.3), linetype = "dashed") +
     geom_line(data = df_preds, aes(x = year, y = hiv_inc_lo, col = "HIV infected", alpha = 0.3), linetype = "dashed") +
-    geom_line(data = df_preds, aes(x = year, y = nohiv_inc_lo, col = "HIV uninfected", alpha = 0.3), linetype = "dashed") +
-    geom_line(data = df_preds, aes(x = year, y = nohiv_inc_hi, col = "HIV uninfected", alpha = 0.3), linetype = "dashed") +
-    geom_line(data = df_actual, aes(x = year, y = hiv_plus_nohiv_lo, col = "Total", alpha = 0.3), linetype = "dotdash") +
-    geom_line(data = df_actual, aes(x = year, y = hiv_plus_nohiv_hi, col = "Total", alpha = 0.3), linetype = "dotdash") +
+    geom_line(data = df_actual, aes(x = year, y = total_inc_lo, col = "Total", alpha = 0.3), linetype = "dotdash") +
+    geom_line(data = df_actual, aes(x = year, y = total_inc_hi, col = "Total", alpha = 0.3), linetype = "dotdash") +
     geom_line(data = df_actual, aes(x = year, y = hiv_inc_hi, col = "HIV infected", alpha = 0.3), linetype = "dotdash") +
     geom_line(data = df_actual, aes(x = year, y = hiv_inc_lo, col = "HIV infected", alpha = 0.3), linetype = "dotdash") +
-    geom_line(data = df_actual, aes(x = year, y = nohiv_inc_lo, col = "HIV uninfected", alpha = 0.3), linetype = "dotdash") +
-    geom_line(data = df_actual, aes(x = year, y = nohiv_inc_hi, col = "HIV uninfected", alpha = 0.3), linetype = "dotdash") +
+    geom_point(data = df_target, aes(x = year, y = num), colour = "black", shape = 2) +
     scale_shape_manual(values = c(1, 16)) +
     #xlab("Year") + ylab("Incidence \nper 100k people") + 
     theme(axis.title = element_blank()) +
@@ -256,7 +239,7 @@ tb_by_hiv_2035 <- function(country_name){
     labs(colour = "Population", shape = 'Source') +
     ylim(0, NA)
   print(p)
-  ggsave(filename = 'test%03d.png', plot = p)
+  #ggsave(filename = 'test%03d.png', plot = p)
 }
 
 trAngola <- tb_by_hiv_2035("Botswana")
@@ -270,17 +253,20 @@ tb_by_hiv_2035_no_legend <- function(country_name){
 trAngola <- tb_by_hiv_2035("Botswana")
 legend <- get_legend(trAngola)
 
-# generate graphs for the 15 countries of interest using lapply
-g <- lapply(hiv_15, tb_by_hiv_2035_no_legend)
-g15 <- do.call(grid.arrange, g)
-plot <- plot_grid(g15, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+meet_targets <- c('South Africa', 'Kenya', 'Zimbabwe', 'Lesotho', 'United Republic of Tanzania', 'Eswatini')
+miss_targets <- c('Botswana', 'Namibia', 'Zambia', 'Malawi', 'Cameroon', 'Congo', 'Sierra Leone', 'Uganda', 'Angola')
 
 # axes labels
 y.grob <- textGrob("Incidence per 100k people", gp = gpar(col="black", fontsize=15), rot = 90)
 x.grob <- textGrob("Year", gp = gpar(fontface="bold", col="black", fontsize=15))
 
+# generate graphs for the 15 countries of interest using lapply
+g <- lapply(meet_targets, tb_by_hiv_2035_no_legend)
+g15 <- do.call(grid.arrange, g)
+plot <- plot_grid(g15, vjust = 1, scale = 1, ncol = 1, align = 'v', axis = 't')
+
 # create tiff file
-tiff(filename = "005_tb_hiv_2000_2035.tiff", width = 6.75, height = 8, units = "in", res = 300)
+tiff(filename = "005_tb_hiv_2000_2035.meet_targets.tiff", width = 6.75, height = 8, units = "in", res = 300)
 grid.arrange(arrangeGrob(plot, left = y.grob, bottom = x.grob))
 dev.off()
 
