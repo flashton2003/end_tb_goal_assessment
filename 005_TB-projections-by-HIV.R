@@ -61,10 +61,10 @@ add_ci_to_predicted <- function(predicted_tb_inc, df_country){
     mutate(proj_tbhiv_ci_hi = hiv_inc * high_tbhiv_bound_ratio) %>% 
     mutate(proj_no_hiv_tb_ci_lo = nohiv_inc * low_no_hiv_tb_bound_ratio) %>% 
     mutate(proj_no_hiv_tb_ci_hi = nohiv_inc * high_no_hiv_tb_bound_ratio)
+    
   
   ## then combine back with predicted_tb_inc using a join
   predicted_tb_inc <- left_join(predicted_tb_inc, tmp_predicted_tb_inc)
-  
   return(predicted_tb_inc)
 }
 
@@ -79,6 +79,7 @@ get_one_country_df <- function(country_name){
     mutate(nohiv_inc_lo = total_inc_lo - hiv_inc_lo) %>% 
     mutate(nohiv_inc_hi = total_inc_hi - hiv_inc_hi)
   # returns df with 10 cols and 36 rows (2000-2035)
+  View(df_onecountry)
   return(df_onecountry)
 }
 
@@ -90,6 +91,7 @@ predict_inc <- function(country_name){
   
   # get df of just that country (2000-2018 WHO reported data)
   df_actual <- get_one_country_df(country_name)
+  View(df_actual)
   df_actual <- df_actual %>% mutate(hiv_plus_nohiv = hiv_inc + nohiv_inc)
   # extract start year for projection, same year as for overall projection (in 002)
   year_start <- years[country_name]
@@ -119,25 +121,27 @@ predict_inc <- function(country_name){
   df_preds$hiv_inc <- as.numeric(predict(fit_hiv, df_preds, type = "response"))
   df_preds$nohiv_inc <- as.numeric(predict(fit_nohiv, df_preds, type = "response"))
   # replace all predicted values less than 10 with 10
+  ## need to do this twice, once before teh combination of hiv and nonhiv and once after
   df_preds[] <- lapply(df_preds, function(x) ifelse(x<10, 10, x))
   # this is different from total as its the sum of the hiv and non-hiv predictions, not the overall prediction
   df_preds <- df_preds %>% mutate(hiv_plus_nohiv = hiv_inc + nohiv_inc)
+  # minimum incidence set to 10 per 100,000
   df_preds[] <- lapply(df_preds, function(x) ifelse(x<10, 10, x))
-  View(df_preds)
   # add confidence intervals
   df_preds <- add_ci_to_predicted(df_preds, df_actual)
+  #View(df_preds)
   df_preds <- df_preds %>% 
     dplyr::rename(hiv_inc_lo = proj_tbhiv_ci_lo, hiv_inc_hi = proj_tbhiv_ci_hi, 
                   nohiv_inc_lo = proj_no_hiv_tb_ci_lo, nohiv_inc_hi = proj_no_hiv_tb_ci_hi)
-  
-  # minimum incidence set to 10 per 100,000
 
-  
   # bind df_actual (2000-2018) together with df_preds (2019-2035)
   # View(df_actual)
   # View(df_preds)
   
   df_actual <- df_actual %>% select(-c(total_inc_lo, total_inc_hi))
+  #View(df_actual)
+  #View(df_preds)
+  #thinner_df_preds <- df_preds %>% select(-c())
   df_incidence <- rbind(df_actual, df_preds)
   
   return(list("df_incidence" = df_incidence, "df_actual" = df_actual, "df_preds" = df_preds))
@@ -161,7 +165,7 @@ predict_numb <- function(country_name){
   # get incidence predictions of that country from predict_inc, 2000-2035
   predict_inc_output <- predict_inc(country_name)
   inc_country <- predict_inc_output$df_incidence
-  View(inc_country)
+  #View(inc_country)
   # get population of that country, 2000-2035 (worldbank data)
   pop_country <- pop.hiv %>% filter(country == country_name) %>% select(year, population)
   
@@ -184,7 +188,6 @@ predict_numb <- function(country_name){
   
 }
 
-predict_numb("Botswana")
 
 ######################### CALCULATE EXCESS NUM CASES #########################
 
@@ -216,8 +219,12 @@ tb_by_hiv_2035 <- function(country_name){
   predict_inc_output <- predict_inc(country_name)
   df_actual <- predict_inc_output$df_actual
   df_preds <- predict_inc_output$df_preds
+  df_preds <- df_preds %>% mutate(hiv_plus_nohiv_lo = hiv_inc_lo + nohiv_inc_lo) %>%
+    mutate(hiv_plus_nohiv_hi = hiv_inc_hi + nohiv_inc_hi)
+  df_actual <- df_actual %>% mutate(hiv_plus_nohiv_lo = hiv_inc_lo + nohiv_inc_lo) %>%
+    mutate(hiv_plus_nohiv_hi = hiv_inc_hi + nohiv_inc_hi)
   View(df_actual)
-  View(df_preds)
+  #View(df_preds)
   
   # p <- ggplot(full_inc_df, aes(year, y = value, colour = Incidence)) +
   p <- ggplot() +
@@ -227,6 +234,18 @@ tb_by_hiv_2035 <- function(country_name){
     geom_point(data = df_preds, aes(x = year, y = hiv_plus_nohiv, col = "Total", shape = "Predicted")) +
     geom_point(data = df_preds, aes(x = year, y = hiv_inc, col = "HIV infected", shape = "Predicted")) +
     geom_point(data = df_preds, aes(x = year, y = nohiv_inc, col = "HIV uninfected", shape = "Predicted")) +
+    geom_line(data = df_preds, aes(x = year, y = hiv_plus_nohiv_lo, col = "Total", alpha = 0.3), linetype = "dashed") +
+    geom_line(data = df_preds, aes(x = year, y = hiv_plus_nohiv_hi, col = "Total", alpha = 0.3), linetype = "dashed") +
+    geom_line(data = df_preds, aes(x = year, y = hiv_inc_hi, col = "HIV infected", alpha = 0.3), linetype = "dashed") +
+    geom_line(data = df_preds, aes(x = year, y = hiv_inc_lo, col = "HIV infected", alpha = 0.3), linetype = "dashed") +
+    geom_line(data = df_preds, aes(x = year, y = nohiv_inc_lo, col = "HIV uninfected", alpha = 0.3), linetype = "dashed") +
+    geom_line(data = df_preds, aes(x = year, y = nohiv_inc_hi, col = "HIV uninfected", alpha = 0.3), linetype = "dashed") +
+    geom_line(data = df_actual, aes(x = year, y = hiv_plus_nohiv_lo, col = "Total", alpha = 0.3), linetype = "dotdash") +
+    geom_line(data = df_actual, aes(x = year, y = hiv_plus_nohiv_hi, col = "Total", alpha = 0.3), linetype = "dotdash") +
+    geom_line(data = df_actual, aes(x = year, y = hiv_inc_hi, col = "HIV infected", alpha = 0.3), linetype = "dotdash") +
+    geom_line(data = df_actual, aes(x = year, y = hiv_inc_lo, col = "HIV infected", alpha = 0.3), linetype = "dotdash") +
+    geom_line(data = df_actual, aes(x = year, y = nohiv_inc_lo, col = "HIV uninfected", alpha = 0.3), linetype = "dotdash") +
+    geom_line(data = df_actual, aes(x = year, y = nohiv_inc_hi, col = "HIV uninfected", alpha = 0.3), linetype = "dotdash") +
     scale_shape_manual(values = c(1, 16)) +
     #xlab("Year") + ylab("Incidence \nper 100k people") + 
     theme(axis.title = element_blank()) +
@@ -237,8 +256,10 @@ tb_by_hiv_2035 <- function(country_name){
     labs(colour = "Population", shape = 'Source') +
     ylim(0, NA)
   print(p)
+  ggsave(filename = 'test%03d.png', plot = p)
 }
-  
+
+trAngola <- tb_by_hiv_2035("Botswana")
   
 # without legend
 tb_by_hiv_2035_no_legend <- function(country_name){
